@@ -16,7 +16,9 @@
 #define FULL_RANGE 32767
 #define BITRATE 48000
 
-size_t w_bytes = CHUNK_SIZE;
+size_t bytes_written = CHUNK_SIZE;
+
+size_t bytes_read = 0;
 
 double time_in_ms = 0;
 
@@ -61,7 +63,7 @@ void setup_dac(){
         .sample_rate = BITRATE,
         .bits_per_sample = I2S_BITS_PER_CHAN_16BIT,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = I2S_COMM_FORMAT_I2S_LSB,
+        .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
 
         .dma_buf_count = 2,
@@ -80,28 +82,40 @@ void setup_dac(){
         .data_in_num = I2S_PIN_NO_CHANGE
     };
 
-    i2s_driver_install(0, &dacI2SConfig, 0, NULL);   //install and start i2s driver
-    i2s_set_pin(0, &dacI2SPins);
+    i2s_driver_install(1, &dacI2SConfig, 0, NULL);   //install and start i2s driver
+    i2s_set_pin(1, &dacI2SPins);
 }
 
 
-// void setup_adc(){
+void setup_adc(){
 
-//     i2s_config_t adcI2SConfig = {
-//         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
-//         .sample_rate = BITRATE,
-//         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-//         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-//         .communication_format = I2S_COMM_FORMAT_I2S_LSB,
+    i2s_config_t adcI2SConfig = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
+        .sample_rate = BITRATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         
-//         .dma_buf_count = 2,
-//         .dma_buf_len = 1024,
-//         .use_apll = false,
-//         .tx_desc_auto_clear = false,
-//         .fixed_mclk = 0
-//         };
-//     }
+        .dma_buf_count = 2,
+        .dma_buf_len = 1024,
+        .use_apll = false,
+        .tx_desc_auto_clear = false,
+        .fixed_mclk = 0
+        };
 
+    
+    // i2s_pin_config_t adcI2SPins = {
+    //     .bck_io_num = 4,
+    //     .data_out_num = 18,
+    //     .mck_io_num = 0,
+    //     .ws_io_num = 5,
+    //     .data_in_num = I2S_PIN_NO_CHANGE
+    // };
+
+    i2s_driver_install(0, &adcI2SConfig, 0, NULL);
+    i2s_set_pin(0, NULL);
+    i2s_set_adc_mode(0, ADC1_CHANNEL_0);
+}
 
 float angle = 0;
 void generate_sine(float frequency, float amplitude){
@@ -117,14 +131,17 @@ void generate_sine(float frequency, float amplitude){
 
 void app_main() {
 
-    setup_dac();    
+    setup_dac();
+    setup_adc();
 
     while(1){
 
-        generate_sine(1000, 1);
+        //generate_sine(1000, 1);
+
+        i2s_read(0, &data, CHUNK_SIZE, &bytes_read, 100);
 
         //i2s_channel_write(tx_handle, &data, CHUNK_SIZE, &w_bytes, 1000);
-        i2s_write(0, data, CHUNK_SIZE, &w_bytes, 100);
+        i2s_write(1, data, CHUNK_SIZE, &bytes_written, 100);
 
         //vTaskDelay(pdMS_TO_TICKS(20));
     }
