@@ -25,7 +25,8 @@ double time_in_ms = 0;
 // i2s_chan_handle_t tx_handle;
 // i2s_chan_handle_t rx_handle;
 
-int32_t data[CHUNK_SIZE] = {0};
+int16_t data_in[CHUNK_SIZE] = {0};
+int32_t data_out[CHUNK_SIZE] = {0};
 
 
 
@@ -115,6 +116,8 @@ void setup_adc(){
     i2s_driver_install(0, &adcI2SConfig, 0, NULL);
     i2s_set_pin(0, NULL);
     i2s_set_adc_mode(0, ADC1_CHANNEL_0);
+    i2s_adc_enable(0);
+    
 }
 
 float angle = 0;
@@ -123,7 +126,7 @@ void generate_sine(float frequency, float amplitude){
     float amp = FULL_RANGE * amplitude;
 
     for(int i = 0; i < CHUNK_SIZE; i+=1){
-            data[i] = (int16_t)(amp * sinf(angle));
+            data_out[i] = (int16_t)(amp * sinf(angle));
             angle += offset;
             if (angle >= 2*M_PI){ angle = 0; }
     }
@@ -138,10 +141,14 @@ void app_main() {
 
         //generate_sine(1000, 1);
 
-        i2s_read(0, &data, CHUNK_SIZE, &bytes_read, 100);
+        i2s_read(0, &data_in, CHUNK_SIZE, &bytes_read, 100);
+
+        for (int i = 0; i < CHUNK_SIZE; i++){
+            printf("%u\n", data_in[i]);
+        }
 
         //i2s_channel_write(tx_handle, &data, CHUNK_SIZE, &w_bytes, 1000);
-        i2s_write(1, data, CHUNK_SIZE, &bytes_written, 100);
+        i2s_write(1, data_out, CHUNK_SIZE, &bytes_written, 100);
 
         //vTaskDelay(pdMS_TO_TICKS(20));
     }
