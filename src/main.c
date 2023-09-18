@@ -12,11 +12,9 @@
 #include "math.h"
 
 
-#define CHUNK_SIZE 2048
+#define CHUNK_SIZE 512
 #define FULL_RANGE 32767
-#define BITRATE 48000
-
-size_t bytes_written = CHUNK_SIZE;
+#define BITRATE 44100
 
 size_t bytes_read = 0;
 
@@ -26,7 +24,7 @@ double time_in_ms = 0;
 // i2s_chan_handle_t rx_handle;
 
 int16_t data_in[CHUNK_SIZE] = {0};
-int32_t data_out[CHUNK_SIZE] = {0};
+int16_t data_out[CHUNK_SIZE] = {0};
 
 
 
@@ -67,8 +65,8 @@ void setup_dac(){
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
 
-        .dma_buf_count = 2,
-        .dma_buf_len = 1024,
+        .dma_buf_count = 8,
+        .dma_buf_len = 64,
         .use_apll = false,
         .tx_desc_auto_clear = false,
         .fixed_mclk = 0
@@ -97,8 +95,8 @@ void setup_adc(){
         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         
-        .dma_buf_count = 2,
-        .dma_buf_len = 1024,
+        .dma_buf_count = 8,
+        .dma_buf_len = 64,
         .use_apll = false,
         .tx_desc_auto_clear = false,
         .fixed_mclk = 0
@@ -128,7 +126,24 @@ void generate_sine(float frequency, float amplitude){
     for(int i = 0; i < CHUNK_SIZE; i+=1){
             data_out[i] = (int16_t)(amp * sinf(angle));
             angle += offset;
-            if (angle >= 2*M_PI){ angle = 0; }
+            if (angle >= 4*M_PI){ angle = 0; }
+    }
+}
+
+
+void write_frames(int16_t *frames, size_t frame_count){
+    size_t bytes_written = 0;
+    size_t available_bytes = frame_count * sizeof(int16_t);
+    size_t buffer_position = 0;
+
+    i2s_write(1, frames + (buffer_position/sizeof(int16_t)), available_bytes, &bytes_written, 100);
+    available_bytes -= bytes_written;
+    buffer_position += bytes_written;
+
+    while(bytes_written > 0){
+        i2s_write(1, frames + (buffer_position/sizeof(int16_t)), available_bytes, &bytes_written, 100);
+        available_bytes -= bytes_written;
+        buffer_position += bytes_written;
     }
 }
 
@@ -139,16 +154,19 @@ void app_main() {
 
     while(1){
 
-        //generate_sine(1000, 1);
+        generate_sine(1234, 0.5);
 
-        i2s_read(0, &data_in, CHUNK_SIZE, &bytes_read, 100);
+        write_frames(data_out, CHUNK_SIZE);
 
-        for (int i = 0; i < CHUNK_SIZE; i++){
-            printf("%u\n", data_in[i]);
-        }
+
+        //i2s_read(0, &data_in, CHUNK_SIZE, &bytes_read, 100);
+
+        // for (int i = 0; i < CHUNK_SIZE; i++){
+        //     printf(">sin:%i\n", data_out[i]);
+        // }
 
         //i2s_channel_write(tx_handle, &data, CHUNK_SIZE, &w_bytes, 1000);
-        i2s_write(1, data_out, CHUNK_SIZE, &bytes_written, 100);
+
 
         //vTaskDelay(pdMS_TO_TICKS(20));
     }
