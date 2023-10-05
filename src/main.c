@@ -6,8 +6,12 @@
 #define SAMPLERATE 48000
 #define SAMPLEBLOCK 1024
 
+#define MAXDELAYLENGTH (1 * SAMPLERATE)
+
 int16_t samples_in[SAMPLEBLOCK];
 int16_t samples_out[SAMPLEBLOCK];
+
+
 
 
 void adc_setup (){
@@ -61,31 +65,55 @@ void dac_setup(){
 
 }
 
-// void task_read(){
-//     size_t bytes_read = 0;
-//     int num_bytes_read = i2s_read(I2S_NUM_0, (void *) samples_in, sizeof(samples_in), &bytes_read, portMAX_DELAY);
-// }
+void task_read(){
+    while (1){
+        size_t bytes_read = 0;
+        int num_bytes_read = i2s_read(I2S_NUM_0, (void *) samples_in, sizeof(samples_in), &bytes_read, portMAX_DELAY);
+    }
+}
+
+
+int16_t delay_buffer[MAXDELAYLENGTH];
+int32_t delay_index = 0;
+size_t delay_length = SAMPLERATE * 0.5;
+float decay = 0.5;
+
+void task_write(){
+
+
+
+    while(1){
+
+        for (size_t i = 0; i < SAMPLEBLOCK; i+=1){
+
+            int32_t delayed_index = delay_index-delay_length;
+            if (delayed_index <= 0) delayed_index = delayed_index + MAXDELAYLENGTH;
+
+            //printf("delay_index: %li, delayed_index: %li\n", delay_index, delayed_index);
+
+            delay_buffer[delay_index] = ((samples_in[i]-2048)*8) + (int16_t)(decay * delay_buffer[delay_index]);
+
+            samples_out[i] = delay_buffer[delayed_index];
+
+            delay_index++;
+            if (delay_index >= MAXDELAYLENGTH) delay_index = 0;
+
+        }
+
+        size_t bytes_written = 0;
+        i2s_write(I2S_NUM_1, (void *)samples_out, sizeof(samples_out), &bytes_written, portMAX_DELAY);
+    }
+}
 
 TaskHandle_t task_read_handle = NULL;
+TaskHandle_t task_write_handle = NULL;
 
 void app_main(){
     dac_setup();
     adc_setup();
 
+    xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
+    xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
 
-    while(1){
-
-        size_t bytes_written = 0;
-        size_t bytes_read = 0;
-        int num_bytes_read = i2s_read(I2S_NUM_0, (void *) samples_in, sizeof(samples_in), &bytes_read, portMAX_DELAY);
-
-        for (uint16_t i = 0; i < SAMPLEBLOCK; i+=1){
-            //printf("%i\n", samples_in[i]);
-            samples_out[i] = (samples_in[i]-2048)*8;
-
-            //printf("%li\n", samples_out[i]);
-        }
-
-        i2s_write(I2S_NUM_1, (void *)samples_out, sizeof(samples_out), &bytes_written, portMAX_DELAY);
-    }
+    
 }
