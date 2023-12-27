@@ -1,25 +1,33 @@
 
 
 #include "driver/i2s.h"
+#include "driver/adc.h"
 #include "freertos/FreeRTOS.h"
 
-#define SAMPLERATE 48000
+#define SAMPLERATE 44100
 #define SAMPLEBLOCK 1024
+#define RATE_OFFSET 10000
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
 int16_t samples_in[SAMPLEBLOCK];
 int16_t samples_out[SAMPLEBLOCK];
+int pot1 =  0;
+int sw1 = 0;
 
 
+void inputs_setup(){
+    gpio_set_pull_mode(GPIO_NUM_11, GPIO_PULLUP_ENABLE);
+    gpio_set_direction(GPIO_NUM_11, GPIO_MODE_INPUT);
 
+}
 
 void adc_setup (){
 
 
     i2s_config_t i2s_adc_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN,
-        .sample_rate = SAMPLERATE+12000,
+        .sample_rate = SAMPLERATE+RATE_OFFSET,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
@@ -69,6 +77,11 @@ void task_read(){
     while (1){
         size_t bytes_read = 0;
         int num_bytes_read = i2s_read(I2S_NUM_0, (void *) samples_in, sizeof(samples_in), &bytes_read, portMAX_DELAY);
+
+        adc2_get_raw(ADC2_CHANNEL_8, ADC_BITWIDTH_10, &pot1);
+        pot1 = pot1*100;
+        pot1 = pot1/1023;
+        sw1 = gpio_get_level(GPIO_NUM_11);
     }
 }
 
@@ -86,17 +99,19 @@ void task_write(){
 
         for (size_t i = 0; i < SAMPLEBLOCK; i+=1){
 
-            int32_t delayed_index = delay_index-delay_length;
-            if (delayed_index <= 0) delayed_index = delayed_index + MAXDELAYLENGTH;
+            // int32_t delayed_index = delay_index-delay_length;
+            // if (delayed_index <= 0) delayed_index = delayed_index + MAXDELAYLENGTH;
 
-            //printf("delay_index: %li, delayed_index: %li\n", delay_index, delayed_index);
+            // //printf("delay_index: %li, delayed_index: %li\n", delay_index, delayed_index);
 
-            delay_buffer[delay_index] = ((samples_in[i]-2048)*8) + (int16_t)(decay * delay_buffer[delay_index]);
+            // delay_buffer[delay_index] = ((samples_in[i]-2048)*8) + (int16_t)(decay * delay_buffer[delay_index]);
 
-            samples_out[i] = delay_buffer[delayed_index];
+            // samples_out[i] = delay_buffer[delayed_index];
 
-            delay_index++;
-            if (delay_index >= MAXDELAYLENGTH) delay_index = 0;
+            // delay_index++;
+            // if (delay_index >= MAXDELAYLENGTH) delay_index = 0;
+
+            samples_out[i] = samples_in[i]*10;
 
         }
 
@@ -114,6 +129,18 @@ void app_main(){
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
+
+    while(1){
+        //printf("pot1: %i, sw1: %i\n", pot1, sw1);
+        
+
+        if(sw1 == 1){
+
+            i2s_set_sample_rates(I2S_NUM_1, RATE_OFFSET+(pot1*10));
+            printf("ste samplerate of: %i\n", RATE_OFFSET+pot1);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+    }
 
     
 }
