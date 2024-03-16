@@ -2,8 +2,11 @@
 #include "esp_log.h"
 
 #include "driver/i2s.h"
-#include "driver/adc.h"
 #include "freertos/FreeRTOS.h"
+
+#include "mcp320x/mcp320x.h"
+
+#include <math.h>
 
 #define SAMPLERATE 44100
 #define SAMPLEBLOCK 512
@@ -12,7 +15,10 @@
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
-int16_t samples_in[SAMPLEBLOCK*2];
+mcp320x_t *mcp320x_handle = NULL;
+uint16_t voltage;
+
+int16_t samples_in[SAMPLEBLOCK];
 int16_t samples_out[SAMPLEBLOCK];
 int pot1 =  0;
 int sw1 = 0;
@@ -25,24 +31,36 @@ void inputs_setup(){
 }
 
 void adc_setup (){
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = GPIO_NUM_13, // 23
+        .miso_io_num = GPIO_NUM_12, // 19
+        .sclk_io_num = GPIO_NUM_14, // 18
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .data4_io_num = -1,
+        .data5_io_num = -1,
+        .data6_io_num = -1,
+        .data7_io_num = -1,
+        .max_transfer_sz = 3, // 24 bits.
+        .flags = SPICOMMON_BUSFLAG_MASTER,
+        .isr_cpu_id = INTR_CPU_ID_AUTO,
+        .intr_flags = ESP_INTR_FLAG_LEVEL3};
 
+    mcp320x_config_t mcp320x_cfg = {
+        .host = SPI3_HOST,
+        .device_model = MCP3204_MODEL,
+        .clock_speed_hz = 2 * 16 * SAMPLERATE, // 1 Mhz.
+        .reference_voltage = 5000,         // 5V
+        .cs_io_num = GPIO_NUM_15}; // 5
 
-    i2s_config_t i2s_adc_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN,
-        .sample_rate = (SAMPLERATE+RATE_OFFSET)*2,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .tx_desc_auto_clear = false,
-        .dma_buf_count = 8,
-        .dma_buf_len = SAMPLEBLOCK*2,
-        .use_apll = false,
-        .fixed_mclk = 0
-    };
+    // Bus initialization is up to the developer.
+    ESP_ERROR_CHECK(spi_bus_initialize(mcp320x_cfg.host, &bus_cfg, 0));
 
-    i2s_driver_install(I2S_NUM_0, &i2s_adc_config, 0, NULL);
-    i2s_set_adc_mode(ADC_UNIT_1, ADC1_CHANNEL_0);
+    // Add the device to the SPI bus.
+    mcp320x_handle = mcp320x_install(&mcp320x_cfg);
+
+    // Occupy the SPI bus for multiple transactions.
+    ESP_ERROR_CHECK(mcp320x_acquire(mcp320x_handle, portMAX_DELAY));
 
 }
 
@@ -77,19 +95,21 @@ void dac_setup(){
 
 void task_read(){
     while (1){
-        size_t bytes_read = 0;
-        int num_bytes_read = i2s_read(I2S_NUM_0, (void *) samples_in, sizeof(samples_in), &bytes_read, portMAX_DELAY);
 
-        uint64_t sum;
-        int reading;
+    for (size_t i = 0; i < SAMPLEBLOCK; i++)
+    {
+        // Read voltage, sampling 1000 times.
+        ESP_ERROR_CHECK(mcp320x_read(mcp320x_handle,
+                             MCP320X_CHANNEL_0,
+                             MCP320X_READ_MODE_SINGLE,
+                             1,
+                             &voltage));
 
-        // for (int i = 0; i < 5; i++){
-        //     adc2_get_raw(ADC2_CHANNEL_8, ADC_BITWIDTH_10, &reading);
-        //     sum += reading;
-        // }
-        // sum = (sum*100)/(5*1023);
-        // pot1 = (int)sum;
-        // sw1 = gpio_get_level(GPIO_NUM_11);
+        samples_in[i] = (int16_t)voltage;
+
+        //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
+    }
+
     }
 }
 
@@ -98,16 +118,12 @@ int16_t delay_buffer[MAXDELAYLENGTH];
 int32_t delay_index = 0;
 size_t delay_length = SAMPLERATE * 0.5;
 float decay = 0.5;
-int16_t last_sample=0;
 
-
-int16_t lowpass(int16_t input)
-{
-   int16_t retvalue=(input + (last_sample * 7)) >> 3;
-   last_sample=retvalue;
-   return retvalue;
-}
-
+// float time;
+// int16_t sine(){
+//     time += (1/SAMPLERATE);
+//     return (int16_t)sin(2*3.14*time);
+// }
 
 
 void task_write(){
@@ -118,10 +134,14 @@ void task_write(){
 
 
         for (int i = 0; i < SAMPLEBLOCK; i+=1){
-            samples_out[i] = lowpass((samples_in[i*2]+samples_in[(i*2)+1])/2)*100;
-            
+            samples_out[i] = samples_in[i];
+            //printf("%d\n", samples_out[i]);
         }
 
+        // for (int i = 0; i < SAMPLEBLOCK; i+=1){
+        //     samples_out[i] = sine();
+        //     printf("%d\n", samples_out[i]);
+        // }
             
 
 
