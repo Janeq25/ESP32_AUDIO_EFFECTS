@@ -1,5 +1,6 @@
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
+#include "esp_timer.h"
 
 #include "driver/i2s.h"
 #include "freertos/FreeRTOS.h"
@@ -169,6 +170,23 @@ void task_write(){
         i2s_write(I2S_NUM_1, (void *)samples_out, sizeof(samples_out), &bytes_written, portMAX_DELAY);
     }
 }
+
+
+void measure_important_function(void) {
+    const unsigned MEASUREMENTS = 5000;
+    uint64_t start = esp_timer_get_time();
+
+    for (int retries = 0; retries < MEASUREMENTS; retries++) {
+        important_function(); // This is the thing you need to measure
+    }
+
+    uint64_t end = esp_timer_get_time();
+
+    printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
+           MEASUREMENTS, (end - start)/1000, (end - start)/MEASUREMENTS);
+}
+
+
 
 TaskHandle_t task_read_handle = NULL;
 TaskHandle_t task_write_handle = NULL;
