@@ -31,6 +31,9 @@ void inputs_setup(){
 }
 
 void adc_setup (){
+
+    uint32_t freq;
+
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = GPIO_NUM_13, // 23
         .miso_io_num = GPIO_NUM_12, // 19
@@ -49,7 +52,7 @@ void adc_setup (){
     mcp320x_config_t mcp320x_cfg = {
         .host = SPI3_HOST,
         .device_model = MCP3204_MODEL,
-        .clock_speed_hz = 2 * 16 * SAMPLERATE, // 1 Mhz.
+        .clock_speed_hz = 1  * 1000 * 1000, // 1 Mhz.
         .reference_voltage = 5000,         // 5V
         .cs_io_num = GPIO_NUM_15}; // 5
 
@@ -61,6 +64,9 @@ void adc_setup (){
 
     // Occupy the SPI bus for multiple transactions.
     ESP_ERROR_CHECK(mcp320x_acquire(mcp320x_handle, portMAX_DELAY));
+
+    mcp320x_get_actual_freq(mcp320x_handle, &freq);
+    printf("freq = %li", freq);
 
 }
 
@@ -170,6 +176,7 @@ TaskHandle_t task_write_handle = NULL;
 void app_main(){
     dac_setup();
     adc_setup();
+
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
