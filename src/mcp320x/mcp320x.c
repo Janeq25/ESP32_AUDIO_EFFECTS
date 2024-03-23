@@ -87,6 +87,9 @@ mcp320x_err_t mcp320x_get_actual_freq(mcp320x_t *handle,
     return MCP320X_OK;
 }
 
+
+
+
 mcp320x_err_t mcp320x_read(mcp320x_t *handle,
                            mcp320x_channel_t channel,
                            mcp320x_read_mode_t read_mode,

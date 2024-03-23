@@ -5,13 +5,13 @@
 #include "driver/i2s.h"
 #include "freertos/FreeRTOS.h"
 
-#include "mcp320x/mcp320x.h"
+//#include "mcp320x/mcp320x.h"
+#include "mcp3202/mcp3202.h"
 
 #include <math.h>
 
 #define SAMPLERATE 44100
 #define SAMPLEBLOCK 512
-#define RATE_OFFSET 10000
 #define RANGE (2^16)
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
@@ -53,7 +53,7 @@ void adc_setup (){
     mcp320x_config_t mcp320x_cfg = {
         .host = SPI3_HOST,
         .device_model = MCP3204_MODEL,
-        .clock_speed_hz = 1  * 1000 * 1000, // 1 Mhz.
+        .clock_speed_hz = 24 * SAMPLERATE,
         .reference_voltage = 5000,         // 5V
         .cs_io_num = GPIO_NUM_15}; // 5
 
@@ -67,7 +67,7 @@ void adc_setup (){
     ESP_ERROR_CHECK(mcp320x_acquire(mcp320x_handle, portMAX_DELAY));
 
     mcp320x_get_actual_freq(mcp320x_handle, &freq);
-    printf("freq = %li", freq);
+    ESP_LOGI("ADC SETUP:", "freq = %li", freq);
 
 }
 
@@ -173,11 +173,23 @@ void task_write(){
 
 
 void measure_important_function(void) {
-    const unsigned MEASUREMENTS = 5000;
+    const unsigned MEASUREMENTS = 1;
     uint64_t start = esp_timer_get_time();
 
     for (int retries = 0; retries < MEASUREMENTS; retries++) {
-        important_function(); // This is the thing you need to measure
+        for (size_t i = 0; i < SAMPLEBLOCK; i++)
+        {
+            // Read voltage, sampling 1000 times.
+            ESP_ERROR_CHECK(mcp320x_read(mcp320x_handle,
+                                    MCP320X_CHANNEL_0,
+                                    MCP320X_READ_MODE_SINGLE,
+                                    1,
+                                    &voltage));
+
+            samples_in[i] = (int16_t)voltage;
+
+            //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
+        }
     }
 
     uint64_t end = esp_timer_get_time();
@@ -195,9 +207,10 @@ void app_main(){
     dac_setup();
     adc_setup();
 
+    measure_important_function();
 
-    xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
-    xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
+    //xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
+    //xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
 
     // int rate = SAMPLERATE + 10000;
 
