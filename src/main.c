@@ -5,8 +5,8 @@
 #include "driver/i2s.h"
 #include "freertos/FreeRTOS.h"
 
-//#include "mcp320x/mcp320x.h"
-#include "mcp3202/mcp3202.h"
+#include "mcp320x/mcp320x.h"
+//#include "mcp3202/mcp3202.h"
 
 #include <math.h>
 
@@ -53,7 +53,7 @@ void adc_setup (){
     mcp320x_config_t mcp320x_cfg = {
         .host = SPI3_HOST,
         .device_model = MCP3204_MODEL,
-        .clock_speed_hz = 24 * SAMPLERATE,
+        .clock_speed_hz = 2000000,
         .reference_voltage = 5000,         // 5V
         .cs_io_num = GPIO_NUM_15}; // 5
 
@@ -116,6 +116,8 @@ void task_read(){
 
         //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
     }
+
+    
 
     }
 }
@@ -194,6 +196,10 @@ void measure_important_function(void) {
 
     uint64_t end = esp_timer_get_time();
 
+    for (int i = 0; i < SAMPLEBLOCK; i++){
+        printf("%i\n", samples_in[i]);
+    }
+
     printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
            MEASUREMENTS, (end - start)/1000, (end - start)/MEASUREMENTS);
 }
@@ -209,8 +215,8 @@ void app_main(){
 
     measure_important_function();
 
-    //xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
-    //xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
+    xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
+    xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
 
     // int rate = SAMPLERATE + 10000;
 
