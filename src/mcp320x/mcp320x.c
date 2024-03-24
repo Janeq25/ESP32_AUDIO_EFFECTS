@@ -13,15 +13,23 @@ struct mcp320x_t
     float millivolts_per_resolution_step; /** @brief Millivolts per resolution step (Vref / MCP320X_RESOLUTION). */
 };
 
-mcp320x_t *mcp320x_install(mcp320x_config_t const *config)
-{
-    CMP_CHECK((config != NULL), "config error(NULL)", NULL)
-    CMP_CHECK((config->reference_voltage <= MCP320X_REF_VOLTAGE_MAX), "reference voltage error(>MCP320X_REF_VOLTAGE_MAX)", NULL)
-    CMP_CHECK((config->reference_voltage >= MCP320X_REF_VOLTAGE_MIN), "reference voltage error(<MCP320X_REF_VOLTAGE_MIN)", NULL)
-    CMP_CHECK((config->clock_speed_hz <= MCP320X_CLOCK_MAX_HZ), "clock speed error(>MCP320X_CLOCK_MAX_HZ)", NULL)
-    CMP_CHECK((config->clock_speed_hz >= MCP320X_CLOCK_MIN_HZ), "clock speed error(<MCP320X_CLOCK_MIN_HZ)", NULL)
+mcp320x_err_t mcp320x_init(mcp320x_config_t* config){
+        spi_bus_config_t bus_cfg = {
+        .mosi_io_num = config->mosi_io, // 23
+        .miso_io_num = config->miso_io, // 19
+        .sclk_io_num = config->sclk_io, // 18
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .data4_io_num = -1,
+        .data5_io_num = -1,
+        .data6_io_num = -1,
+        .data7_io_num = -1,
+        .max_transfer_sz = 3, // 24 bits.
+        .flags = SPICOMMON_BUSFLAG_MASTER,
+        .isr_cpu_id = INTR_CPU_ID_AUTO,
+        .intr_flags = ESP_INTR_FLAG_LEVEL3};
 
-    spi_device_interface_config_t dev_cfg = {
+        spi_device_interface_config_t dev_cfg = {
         .command_bits = 0,
         .address_bits = 0,
         .clock_speed_hz = (int)config->clock_speed_hz,
@@ -33,54 +41,42 @@ mcp320x_t *mcp320x_install(mcp320x_config_t const *config)
         .post_cb = NULL,
         .flags = SPI_DEVICE_NO_DUMMY};
 
-    spi_device_handle_t spi_device_handle;
+        spi_bus_initialize(config->host, &bus_cfg, 0);
 
-    CMP_CHECK(spi_bus_add_device(config->host, &dev_cfg, &spi_device_handle) == ESP_OK, "bus error(spi_bus_add_device)", NULL)
+        spi_bus_add_device(config->host, &dev_cfg, config->spi_handle);
 
-    mcp320x_t *dev = (mcp320x_t *)malloc(sizeof(mcp320x_t));
-    dev->spi_handle = spi_device_handle;
-    dev->mcp_model = config->device_model;
-    dev->millivolts_per_resolution_step = (float)config->reference_voltage / (float)MCP320X_RESOLUTION;
+        spi_device_acquire_bus(*config->spi_handle, portMAX_DELAY);
 
-    return dev;
+    return MCP320X_OK;
+
 }
 
-mcp320x_err_t mcp320x_delete(mcp320x_t *handle)
-{
-    CMP_CHECK((handle != NULL), "handle error(NULL)", MCP320X_ERR_INVALID_HANDLE)
-    CMP_CHECK(spi_bus_remove_device(handle->spi_handle) == ESP_OK, "bus error(spi_bus_remove_device)", MCP320X_ERR_SPI_BUS)
+// mcp320x_t *mcp320x_install(mcp320x_config_t const *config)
+// {
 
-    free(handle);
+//     mcp320x_t *dev = (mcp320x_t *)malloc(sizeof(mcp320x_t));
+//     dev->spi_handle = spi_device_handle;
+//     dev->mcp_model = config->device_model;
+//     dev->millivolts_per_resolution_step = (float)config->reference_voltage / (float)MCP320X_RESOLUTION;
+
+//     return dev;
+// }
+
+
+mcp320x_err_t mcp320x_acquire(spi_device_handle_t spi_handle, TickType_t timeout)
+{
+    spi_device_acquire_bus(spi_handle, timeout);
 
     return MCP320X_OK;
 }
 
-mcp320x_err_t mcp320x_acquire(mcp320x_t *handle, TickType_t timeout)
-{
-    CMP_CHECK((handle != NULL), "handle error(NULL)", MCP320X_ERR_INVALID_HANDLE)
-    CMP_CHECK((spi_device_acquire_bus(handle->spi_handle, timeout) == ESP_OK), "device error(spi_device_acquire_bus)", MCP320X_ERR_SPI_BUS_ACQUIRE)
 
-    return MCP320X_OK;
-}
-
-mcp320x_err_t mcp320x_release(mcp320x_t *handle)
-{
-    CMP_CHECK((handle != NULL), "handle error(NULL)", MCP320X_ERR_INVALID_HANDLE)
-
-    spi_device_release_bus(handle->spi_handle);
-
-    return MCP320X_OK;
-}
-
-mcp320x_err_t mcp320x_get_actual_freq(mcp320x_t *handle,
+mcp320x_err_t mcp320x_get_actual_freq(spi_device_handle_t spi_handle,
                                       uint32_t *frequency_hz)
 {
-    CMP_CHECK((handle != NULL), "handle error(NULL)", MCP320X_ERR_INVALID_HANDLE)
-    CMP_CHECK((frequency_hz != NULL), "frequency_hz error(NULL)", MCP320X_ERR_INVALID_VALUE_HANDLE)
-
     int calculated_freq_khz;
 
-    CMP_CHECK((spi_device_get_actual_freq(handle->spi_handle, &calculated_freq_khz) == ESP_OK), "device error(spi_device_get_actual_freq)", MCP320X_ERR_FAIL)
+    spi_device_get_actual_freq(spi_handle, &calculated_freq_khz);
 
     *frequency_hz = (uint32_t)calculated_freq_khz * 1000;
 
@@ -90,17 +86,12 @@ mcp320x_err_t mcp320x_get_actual_freq(mcp320x_t *handle,
 
 
 
-mcp320x_err_t mcp320x_read(mcp320x_t *handle,
+mcp320x_err_t mcp320x_read(spi_device_handle_t spi_handle,
                            mcp320x_channel_t channel,
                            mcp320x_read_mode_t read_mode,
                            uint16_t sample_count,
                            uint16_t *value)
 {
-    CMP_CHECK((handle != NULL), "handle error(NULL)", MCP320X_ERR_INVALID_HANDLE)
-    CMP_CHECK(((int)channel < (int)handle->mcp_model), "channel error(invalid)", MCP320X_ERR_INVALID_CHANNEL)
-    CMP_CHECK((sample_count > 0), "sample_count error(0)", MCP320X_ERR_INVALID_SAMPLE_COUNT)
-    CMP_CHECK((value != NULL), "value error(NULL)", MCP320X_ERR_INVALID_VALUE_HANDLE)
-
     uint32_t sum = 0;
     spi_transaction_t transaction = {
         .flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
@@ -128,13 +119,16 @@ mcp320x_err_t mcp320x_read(mcp320x_t *handle,
     //     -  1 1 1: channel 7
     //   * X: dummy bits, any value.
 
-    transaction.tx_data[0] = (uint8_t)((1 << 2) | (read_mode << 1) | ((channel & 4) >> 2));
-    transaction.tx_data[1] = (uint8_t)(channel << 6);
+    //transaction.tx_data[0] = (uint8_t)((1 << 2) | (1 << 1) | ((0 & 4) >> 2));
+    transaction.tx_data[0] = 0b00000100;
+
+    //transaction.tx_data[1] = (uint8_t)(channel << 6);
+    transaction.tx_data[1] = 0;
     transaction.tx_data[2] = 0;
 
     for (uint16_t i = 0; i < sample_count; i++)
     {
-        CMP_CHECK(spi_device_polling_transmit(handle->spi_handle, &transaction) == ESP_OK, "device error(spi_device_polling_transmit)", MCP320X_ERR_SPI_BUS)
+        spi_device_polling_transmit(spi_handle, &transaction);
 
         // Response format (rx_data):
         //
@@ -181,22 +175,3 @@ mcp320x_err_t mcp320x_read(mcp320x_t *handle,
     return MCP320X_OK;
 }
 
-mcp320x_err_t mcp320x_read_voltage(mcp320x_t *handle,
-                                   mcp320x_channel_t channel,
-                                   mcp320x_read_mode_t read_mode,
-                                   uint16_t sample_count,
-                                   uint16_t *voltage)
-{
-    uint16_t value_read = 0;
-
-    mcp320x_err_t result = mcp320x_read(handle, channel, read_mode, sample_count, &value_read);
-
-    if (result != MCP320X_OK)
-    {
-        return result;
-    }
-
-    *voltage = (uint16_t)(value_read * handle->millivolts_per_resolution_step);
-
-    return MCP320X_OK;
-}

@@ -83,26 +83,18 @@ extern "C"
      */
     typedef struct
     {
+        int mosi_io;
+        int miso_io;
+        int sclk_io;
         spi_host_device_t host;       /** @brief SPI peripheral used to communicate with the device. */
         gpio_num_t cs_io_num;         /** @brief GPIO pin used for Chip Select (CS). */
         mcp320x_model_t device_model; /** @brief MCP320X model used with this configuration. */
         uint32_t clock_speed_hz;      /** @brief Clock speed, in Hz. Recommended the use of divisors of 80MHz. */
         uint16_t reference_voltage;   /** @brief Reference voltage, in millivolts. */
+        spi_device_handle_t* spi_handle;
     } mcp320x_config_t;
 
-    /**
-     * @brief Add a MCP320X device to an already configured SPI bus.
-     * @param[in] config Pointer to a @ref mcp320x_config_t struct specifying how the device should be initialized.
-     * @return Valid pointer, otherwise NULL.
-     */
-    mcp320x_t *mcp320x_install(mcp320x_config_t const *config);
-
-    /**
-     * @brief Remove a MCP320X device from a SPI bus.
-     * @param[in] handle MCP320X handle.
-     * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
-     */
-    mcp320x_err_t mcp320x_delete(mcp320x_t *handle);
+    mcp320x_err_t mcp320x_init(mcp320x_config_t* config);
 
     /**
      * @brief Occupy the SPI bus for continuous readings.
@@ -112,16 +104,8 @@ extern "C"
      * @param[in] timeout Time to wait before the bus is occupied by the device. Currently MUST BE set to portMAX_DELAY.
      * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
      */
-    mcp320x_err_t mcp320x_acquire(mcp320x_t *handle, TickType_t timeout);
+    mcp320x_err_t mcp320x_acquire(spi_device_handle_t spi_handle, TickType_t timeout);
 
-    /**
-     * @brief Release the SPI bus occupied by the ADC. All other devices on the bus can start sending transactions.
-     * @note The bus must be acquired using the @ref mcp320x_acquire function.
-     * @note This function is not thread safe when multiple tasks access the same SPI device.
-     * @param[in] handle MCP320X handle.
-     * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
-     */
-    mcp320x_err_t mcp320x_release(mcp320x_t *handle);
 
     /**
      * @brief Get the actual working frequency, in Hertz.
@@ -129,7 +113,7 @@ extern "C"
      * @param[out] frequency_hz Pointer to where the frequency in Hertz will be stored.
      * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
      */
-    mcp320x_err_t mcp320x_get_actual_freq(mcp320x_t *handle,
+    mcp320x_err_t mcp320x_get_actual_freq(spi_device_handle_t spi_handle,
                                           uint32_t *frequency_hz);
 
     /**
@@ -143,7 +127,7 @@ extern "C"
      * @param[out] value Pointer to where the value will be stored.
      * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
      */
-    mcp320x_err_t mcp320x_read(mcp320x_t *handle,
+    mcp320x_err_t mcp320x_read(spi_device_handle_t spi_handle,
                                mcp320x_channel_t channel,
                                mcp320x_read_mode_t read_mode,
                                uint16_t sample_count,
@@ -159,7 +143,7 @@ extern "C"
      * @param[out] voltage Pointer to where the value will be stored.
      * @return MCP320X_OK when success, otherwise any MCP320X_ERR* code.
      */
-    mcp320x_err_t mcp320x_read_voltage(mcp320x_t *handle,
+    mcp320x_err_t mcp320x_read_voltage(spi_device_handle_t spi_handle,
                                        mcp320x_channel_t channel,
                                        mcp320x_read_mode_t read_mode,
                                        uint16_t sample_count,
