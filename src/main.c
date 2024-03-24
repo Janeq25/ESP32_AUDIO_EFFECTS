@@ -16,8 +16,7 @@
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
-mcp320x_t *mcp320x_handle = NULL;
-uint16_t voltage;
+spi_device_handle_t spi_handle;
 
 int16_t samples_in[SAMPLEBLOCK];
 int16_t samples_out[SAMPLEBLOCK];
@@ -33,41 +32,17 @@ void inputs_setup(){
 
 void adc_setup (){
 
-    uint32_t freq;
+    mcp3202_config_t adc_config = {
+        .spi_mosi_io = GPIO_NUM_13,
+        .spi_miso_io = GPIO_NUM_12,
+        .spi_clk_io = GPIO_NUM_14,
+        .spi_clk_speed = 1 * 5000 * 1000,
+        .spi_cs_io = GPIO_NUM_15,
+        .spi_host_id = SPI3_HOST,
+        .spi_handle_ptr = &spi_handle
+    };
 
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = GPIO_NUM_13, // 23
-        .miso_io_num = GPIO_NUM_12, // 19
-        .sclk_io_num = GPIO_NUM_14, // 18
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .data4_io_num = -1,
-        .data5_io_num = -1,
-        .data6_io_num = -1,
-        .data7_io_num = -1,
-        .max_transfer_sz = 3, // 24 bits.
-        .flags = SPICOMMON_BUSFLAG_MASTER,
-        .isr_cpu_id = INTR_CPU_ID_AUTO,
-        .intr_flags = ESP_INTR_FLAG_LEVEL3};
-
-    mcp320x_config_t mcp320x_cfg = {
-        .host = SPI3_HOST,
-        .device_model = MCP3204_MODEL,
-        .clock_speed_hz = 24 * SAMPLERATE,
-        .reference_voltage = 5000,         // 5V
-        .cs_io_num = GPIO_NUM_15}; // 5
-
-    // Bus initialization is up to the developer.
-    ESP_ERROR_CHECK(spi_bus_initialize(mcp320x_cfg.host, &bus_cfg, 0));
-
-    // Add the device to the SPI bus.
-    mcp320x_handle = mcp320x_install(&mcp320x_cfg);
-
-    // Occupy the SPI bus for multiple transactions.
-    ESP_ERROR_CHECK(mcp320x_acquire(mcp320x_handle, portMAX_DELAY));
-
-    mcp320x_get_actual_freq(mcp320x_handle, &freq);
-    ESP_LOGI("ADC SETUP:", "freq = %li", freq);
+    mcp3202_init(&adc_config);
 
 }
 
@@ -100,22 +75,13 @@ void dac_setup(){
 
 }
 
+
+
+
 void task_read(){
     while (1){
 
-    for (size_t i = 0; i < SAMPLEBLOCK; i++)
-    {
-        // Read voltage, sampling 1000 times.
-        ESP_ERROR_CHECK(mcp320x_read(mcp320x_handle,
-                             MCP320X_CHANNEL_0,
-                             MCP320X_READ_MODE_SINGLE,
-                             1,
-                             &voltage));
-
-        samples_in[i] = (int16_t)voltage;
-
-        //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
-    }
+        mcp3202_read_ch0(spi_handle, samples_in, SAMPLEBLOCK);
 
     }
 }
@@ -177,22 +143,16 @@ void measure_important_function(void) {
     uint64_t start = esp_timer_get_time();
 
     for (int retries = 0; retries < MEASUREMENTS; retries++) {
-        for (size_t i = 0; i < SAMPLEBLOCK; i++)
-        {
-            // Read voltage, sampling 1000 times.
-            ESP_ERROR_CHECK(mcp320x_read(mcp320x_handle,
-                                    MCP320X_CHANNEL_0,
-                                    MCP320X_READ_MODE_SINGLE,
-                                    1,
-                                    &voltage));
 
-            samples_in[i] = (int16_t)voltage;
-
-            //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
-        }
+        mcp3202_read_ch0(spi_handle, samples_in, SAMPLEBLOCK);
     }
 
     uint64_t end = esp_timer_get_time();
+
+    for (int i = 0; i < SAMPLEBLOCK; i++){
+        printf("%i\n", samples_in[i]);
+    }
+
 
     printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
            MEASUREMENTS, (end - start)/1000, (end - start)/MEASUREMENTS);
