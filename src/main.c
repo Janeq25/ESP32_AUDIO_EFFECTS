@@ -5,8 +5,8 @@
 #include "driver/i2s.h"
 #include "freertos/FreeRTOS.h"
 
-#include "mcp320x/mcp320x.h"
-//#include "mcp3202/mcp3202.h"
+#include "mcp3202/mcp3202.h"
+
 
 #include <math.h>
 
@@ -16,8 +16,8 @@
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
-mcp320x_t *mcp320x_handle = NULL;
-uint16_t voltage;
+spi_device_handle_t spi_device_handle;
+
 
 int16_t samples_in[SAMPLEBLOCK];
 int16_t samples_out[SAMPLEBLOCK];
@@ -31,31 +31,30 @@ void inputs_setup(){
 
 }
 
-spi_device_handle_t spi_device_handle;
+
 
 void adc_setup (){
 
     uint32_t freq;
 
 
-    mcp320x_config_t mcp320x_cfg = {
+    mcp3202_config_t mcp3202_cfg = {
         .mosi_io = GPIO_NUM_13,
         .miso_io = GPIO_NUM_12,
         .sclk_io = GPIO_NUM_14,
         .host = SPI3_HOST,
-        .device_model = MCP3204_MODEL,
         .clock_speed_hz = 2000000,
-        .reference_voltage = 5000,         // 5V
+        .reference_voltage = 5000,      
         .cs_io_num = GPIO_NUM_15,
         .spi_handle = &spi_device_handle,
-        }; // 5
+        }; 
 
-    mcp320x_init(&mcp320x_cfg);
+    mcp3202_init(&mcp3202_cfg);
 
     // Bus initialization is up to the developer.
 
 
-    mcp320x_get_actual_freq(spi_device_handle, &freq);
+    mcp3202_get_actual_freq(spi_device_handle, &freq);
     ESP_LOGI("ADC SETUP:", "freq = %li", freq);
 
 }
@@ -151,18 +150,16 @@ void task_write(){
 
 
 void measure_important_function(void) {
+    uint16_t voltage;
+
     const unsigned MEASUREMENTS = 1;
     uint64_t start = esp_timer_get_time();
 
     for (int retries = 0; retries < MEASUREMENTS; retries++) {
         for (size_t i = 0; i < SAMPLEBLOCK; i++)
         {
-            // Read voltage, sampling 1000 times.
-            ESP_ERROR_CHECK(mcp320x_read(spi_device_handle,
-                                    MCP320X_CHANNEL_0,
-                                    MCP320X_READ_MODE_SINGLE,
-                                    1,
-                                    &voltage));
+
+            mcp3202_read_diff(spi_device_handle, &voltage);
 
             samples_in[i] = (int16_t)voltage;
 
