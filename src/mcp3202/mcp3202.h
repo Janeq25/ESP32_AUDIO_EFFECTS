@@ -27,6 +27,12 @@ mcp3202_err mcp3202_init(mcp3202_config_t* config);
 
 mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle_ptr, int16_t* read_buffer, uint16_t sample_count);
 
+mcp3202_err mcp320x_read_old(spi_device_handle_t handle,
+                           int channel,
+                           int read_mode,
+                           uint16_t sample_count,
+                           uint16_t *value);
+
 mcp3202_err mcp3202_read_ch1(spi_device_handle_t spi_handle_ptr, int16_t* read_buffer, uint16_t sample_count);
 
 mcp3202_err mcp3202_read_diff(spi_device_handle_t spi_handle_ptr, int16_t* read_buffer, uint16_t sample_count);

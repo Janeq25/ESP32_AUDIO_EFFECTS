@@ -36,7 +36,7 @@ void adc_setup (){
         .spi_mosi_io = GPIO_NUM_13,
         .spi_miso_io = GPIO_NUM_12,
         .spi_clk_io = GPIO_NUM_14,
-        .spi_clk_speed = 1 * 5000 * 1000,
+        .spi_clk_speed = 24 * SAMPLERATE,
         .spi_cs_io = GPIO_NUM_15,
         .spi_host_id = SPI3_HOST,
         .spi_handle_ptr = &spi_handle
@@ -141,17 +141,21 @@ void task_write(){
 void measure_important_function(void) {
     const unsigned MEASUREMENTS = 1;
     uint64_t start = esp_timer_get_time();
+    uint16_t measurement;
 
     for (int retries = 0; retries < MEASUREMENTS; retries++) {
 
-        mcp3202_read_ch0(spi_handle, samples_in, SAMPLEBLOCK);
+        //mcp3202_read_ch0(spi_handle, samples_in, SAMPLEBLOCK);
+        mcp320x_read_old(spi_handle, 1, 1, 1, &measurement);
     }
 
     uint64_t end = esp_timer_get_time();
 
-    for (int i = 0; i < SAMPLEBLOCK; i++){
-        printf("%i\n", samples_in[i]);
-    }
+    printf("%i\n", measurement);
+
+    // for (int i = 0; i < SAMPLEBLOCK; i++){
+    //     printf("%i\n", samples_in[i]);
+    // }
 
 
     printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",

@@ -4,39 +4,41 @@
 
 const char* TAG = "SPI";
 
-spi_bus_config_t spi_bus_config;
-spi_device_interface_config_t spi_device_config;
+
 
 
 mcp3202_err mcp3202_init(mcp3202_config_t* config){
 
+    spi_bus_config_t spi_bus_config = {
+        .mosi_io_num = config->spi_mosi_io,
+        .miso_io_num = config->spi_miso_io,
+        .sclk_io_num = config->spi_clk_io,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .data4_io_num = -1,
+        .data5_io_num = -1,
+        .data6_io_num = -1,
+        .data7_io_num = -1,
+        .max_transfer_sz = 3,
+        .flags = SPICOMMON_BUSFLAG_MASTER,
+        .isr_cpu_id = INTR_CPU_ID_AUTO,
+        .intr_flags = ESP_INTR_FLAG_LEVEL3
+    };
+
+    spi_device_interface_config_t spi_device_config = {
+        .command_bits = 0,
+        .address_bits = 0,
+        .clock_speed_hz = config->spi_clk_speed,
+        .mode = 0,
+        .queue_size = 1,
+        .spics_io_num = config->spi_clk_io,
+        .input_delay_ns = 0,
+        .pre_cb = NULL,
+        .post_cb = NULL,
+        .flags = SPI_DEVICE_NO_DUMMY
+    };
+
     int freq;
-
-    spi_bus_config.mosi_io_num = config->spi_mosi_io;
-    spi_bus_config.miso_io_num = config->spi_miso_io;
-    spi_bus_config.sclk_io_num = config->spi_clk_io;
-    spi_bus_config.quadwp_io_num = -1;
-    spi_bus_config.quadhd_io_num = -1;
-    spi_bus_config.data4_io_num = -1;
-    spi_bus_config.data5_io_num = -1;
-    spi_bus_config.data6_io_num = -1;
-    spi_bus_config.data7_io_num = -1;
-    spi_bus_config.max_transfer_sz = 3;
-    spi_bus_config.flags = SPICOMMON_BUSFLAG_MASTER;
-    spi_bus_config.isr_cpu_id = INTR_CPU_ID_AUTO;
-    spi_bus_config.intr_flags = ESP_INTR_FLAG_LEVEL3;
-
-
-    spi_device_config.command_bits = 0;
-    spi_device_config.address_bits = 0;
-    spi_device_config.clock_speed_hz = config->spi_clk_speed;
-    spi_device_config.mode = 0;
-    spi_device_config.queue_size = 1;
-    spi_device_config.spics_io_num = config->spi_clk_io;
-    spi_device_config.input_delay_ns = 0;
-    spi_device_config.pre_cb = NULL;
-    spi_device_config.post_cb = NULL;
-    spi_device_config.flags = SPI_DEVICE_NO_DUMMY;
 
     if (spi_bus_initialize(config->spi_host_id, &spi_bus_config, 0) != ESP_OK){
         ESP_LOGI(TAG, "spi bus init error");
@@ -76,7 +78,7 @@ mcp3202_err mcp3202_init(mcp3202_config_t* config){
     return MCP_OK;
 }
 
-mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle_ptr, int16_t* read_buffer, uint16_t sample_count){
+mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle, int16_t* read_buffer, uint16_t sample_count){
 
     spi_transaction_t transaction = {
         .flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
@@ -104,8 +106,8 @@ mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle_ptr, int16_t* read_b
     //     -  1 1 1: channel 7
     //   * X: dummy bits, any value.
 
-    //transaction.tx_data[0] = (uint8_t)((1 << 2) | (read_mode << 1) | ((channel & 4) >> 2));
-    transaction.tx_data[0] = 0b00000100;
+    transaction.tx_data[0] = (uint8_t)((1 << 2) | (1 << 1) | ((0 & 4) >> 2));
+    //transaction.tx_data[0] = 0b00000100;
     //transaction.tx_data[1] = (uint8_t)(channel << 6);
     transaction.tx_data[0] = 0;
     
@@ -113,7 +115,7 @@ mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle_ptr, int16_t* read_b
 
     for (uint16_t i = 0; i < sample_count; i++)
     {
-        spi_device_polling_transmit(spi_handle_ptr, &transaction);
+        spi_device_polling_transmit(spi_handle,r3 w R332     &transaction);
 
         // Response format (rx_data):
         //
@@ -149,11 +151,18 @@ mcp3202_err mcp3202_read_ch0(spi_device_handle_t spi_handle_ptr, int16_t* read_b
         //    > second_part = 0 0 0 0 0 0 0 0 1 1 1 1 0 1 1 0
         //    > result      = 0 0 0 0 0 1 0 0 1 1 1 1 0 1 1 0
 
-        read_buffer[i] = ((transaction.rx_data[1] & 15) << 8) | transaction.rx_data[2];
+        const uint16_t first_part = transaction.rx_data[1];
+        const uint16_t second_part = transaction.rx_data[2];
+
+        read_buffer[i] = (int16_t)((((first_part & 15) << 8) | second_part));
+
+        //read_buffer[i] = ((transaction.rx_data[1] & 15) << 8) | transaction.rx_data[2];
     }
 
     return MCP_OK;
 }
+
+
 
 mcp3202_err mcp3202_read_ch1(spi_device_handle_t spi_handle_ptr, int16_t* read_buffer, uint16_t sample_count){
     return MCP_OK;
