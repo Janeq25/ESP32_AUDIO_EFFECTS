@@ -3,10 +3,11 @@
 #include "esp_timer.h"
 
 #include "driver/i2s.h"
+#include "driver/gptimer.h"
+
 #include "freertos/FreeRTOS.h"
 
 #include "mcp3202/mcp3202.h"
-
 
 #include <math.h>
 
@@ -16,10 +17,14 @@
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
-spi_device_handle_t spi_device_handle;
+
+
+TaskHandle_t task_read_handle = NULL;
+TaskHandle_t task_write_handle = NULL;
 
 
 int16_t samples_in[SAMPLEBLOCK];
+uint16_t current_sample = 0;
 int16_t samples_out[SAMPLEBLOCK];
 int pot1 =  0;
 int sw1 = 0;
@@ -31,32 +36,97 @@ void inputs_setup(){
 
 }
 
+void measure_important_function(void) {
+    uint16_t voltage;
 
+    const unsigned MEASUREMENTS = 100;
+    uint64_t start = esp_timer_get_time();
+
+    for (int retries = 0; retries < MEASUREMENTS; retries++) {
+
+        mcp3202_read_diff(&voltage);
+
+
+    }
+
+    uint64_t end = esp_timer_get_time();
+
+    for (int i = 0; i < SAMPLEBLOCK; i++){
+        printf("%i\n", samples_in[i]);
+    }
+
+    printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
+           MEASUREMENTS, (end - start)/1000, (end - start)/MEASUREMENTS);
+}
 
 void adc_setup (){
 
     uint32_t freq;
-
 
     mcp3202_config_t mcp3202_cfg = {
         .mosi_io = GPIO_NUM_13,
         .miso_io = GPIO_NUM_12,
         .sclk_io = GPIO_NUM_14,
         .host = SPI3_HOST,
-        .clock_speed_hz = 2000000,
+        .clock_speed_hz = 2 * 5000 * 1000,
         .reference_voltage = 5000,      
-        .cs_io_num = GPIO_NUM_15,
-        .spi_handle = &spi_device_handle,
+        .cs_io_num = GPIO_NUM_15
         }; 
 
     mcp3202_init(&mcp3202_cfg);
 
-    // Bus initialization is up to the developer.
-
-
-    mcp3202_get_actual_freq(spi_device_handle, &freq);
+    mcp3202_get_actual_freq(&freq);
     ESP_LOGI("ADC SETUP:", "freq = %li", freq);
 
+}
+
+static bool IRAM_ATTR acquire_sample(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){
+
+    BaseType_t high_task_awoken = pdFALSE;
+    uint16_t value;
+
+    mcp3202_read_diff(&value);
+
+    samples_in[current_sample] = (int16_t)value;
+
+    current_sample++;
+    if (current_sample > SAMPLEBLOCK) current_sample = 0;
+
+    return high_task_awoken == pdTRUE;
+}
+
+void timer_setup(){
+    int temp;
+
+    gptimer_handle_t gptimer = NULL;
+
+    gptimer_alarm_config_t alarm_config = {
+        .reload_count = 0, // counter will reload with 0 on alarm event
+        .alarm_count = 226,
+        .flags.auto_reload_on_alarm = true, // enable auto-reload
+    };
+
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = acquire_sample, // register user callback
+    };
+
+
+
+    gptimer_config_t timer_config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 10 * 1000 * 1000, // 10MHz, 1 tick = 0.1us
+    };
+
+    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
+
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, &temp));
+
+    ESP_ERROR_CHECK(gptimer_enable(gptimer));
+
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
+
+    ESP_ERROR_CHECK(gptimer_start(gptimer));
 }
 
 
@@ -89,10 +159,16 @@ void dac_setup(){
 }
 
 void task_read(){
+
+
+    adc_setup();
+
+    measure_important_function();
+
+    timer_setup();
+
     while (1){
 
-
-    
 
     }
 }
@@ -103,14 +179,9 @@ int32_t delay_index = 0;
 size_t delay_length = SAMPLERATE * 0.5;
 float decay = 0.5;
 
-// float time;
-// int16_t sine(){
-//     time += (1/SAMPLERATE);
-//     return (int16_t)sin(2*3.14*time);
-// }
-
-
 void task_write(){
+
+    dac_setup();
 
 
 
@@ -118,7 +189,7 @@ void task_write(){
 
 
         for (int i = 0; i < SAMPLEBLOCK; i+=1){
-            samples_out[i] = samples_in[i];
+            samples_out[i] = samples_in[i]*100;
             //printf("%d\n", samples_out[i]);
         }
 
@@ -149,44 +220,8 @@ void task_write(){
 }
 
 
-void measure_important_function(void) {
-    uint16_t voltage;
-
-    const unsigned MEASUREMENTS = 1;
-    uint64_t start = esp_timer_get_time();
-
-    for (int retries = 0; retries < MEASUREMENTS; retries++) {
-        for (size_t i = 0; i < SAMPLEBLOCK; i++)
-        {
-
-            mcp3202_read_diff(spi_device_handle, &voltage);
-
-            samples_in[i] = (int16_t)voltage;
-
-            //ESP_LOGI("mcp320x", "Voltage: %d mV", voltage);
-        }
-    }
-
-    uint64_t end = esp_timer_get_time();
-
-    for (int i = 0; i < SAMPLEBLOCK; i++){
-        printf("%i\n", samples_in[i]);
-    }
-
-    printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
-           MEASUREMENTS, (end - start)/1000, (end - start)/MEASUREMENTS);
-}
-
-
-
-TaskHandle_t task_read_handle = NULL;
-TaskHandle_t task_write_handle = NULL;
 
 void app_main(){
-    dac_setup();
-    adc_setup();
-
-    measure_important_function();
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);

@@ -1,6 +1,8 @@
 #include "mcp3202.h"
 
 
+spi_device_handle_t spi_handle;
+
 mcp3202_err_t mcp3202_init(mcp3202_config_t* config){
         spi_bus_config_t bus_cfg = {
         .mosi_io_num = config->mosi_io, // 23
@@ -31,16 +33,16 @@ mcp3202_err_t mcp3202_init(mcp3202_config_t* config){
 
         spi_bus_initialize(config->host, &bus_cfg, 0);
 
-        spi_bus_add_device(config->host, &device_cfg, config->spi_handle);
+        spi_bus_add_device(config->host, &device_cfg, &spi_handle);
 
-        spi_device_acquire_bus(*config->spi_handle, portMAX_DELAY);
+        spi_device_acquire_bus(spi_handle, portMAX_DELAY);
 
     return MCP3202_OK;
 
 }
 
 
-mcp3202_err_t mcp3202_get_actual_freq(spi_device_handle_t spi_handle, uint32_t *frequency_hz)
+mcp3202_err_t mcp3202_get_actual_freq(uint32_t *frequency_hz)
 {
     int calculated_freq_khz;
 
@@ -54,9 +56,8 @@ mcp3202_err_t mcp3202_get_actual_freq(spi_device_handle_t spi_handle, uint32_t *
 
 
 
-mcp3202_err_t mcp3202_read_diff(spi_device_handle_t spi_handle, uint16_t *value)
+mcp3202_err_t mcp3202_read_diff(uint16_t *value)
 {
-    uint32_t sum = 0;
     spi_transaction_t transaction = {
         .flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA,
         .length = 24};
