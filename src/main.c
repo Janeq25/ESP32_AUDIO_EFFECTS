@@ -159,7 +159,8 @@ void task_read(){
 
     while (1){
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(1));
+        
 
     }
 }
@@ -172,12 +173,13 @@ void task_write(){
     while(1){
         size_t bytes_written = 0;
 
-        if (get_reading_buffer_state(&input_buffers) == IS_FULL){
+        if (get_reading_buffer_state(&input_buffers) != IS_WRITTEN){
         
             int16_t* audio_data = start_buffer_read(&input_buffers);
 
             for (int i = 0; i < SAMPLEBLOCK; i++){
             //    printf("%d\n", audio_data[i]);
+                audio_data[i] *= 100;
             }
 
             i2s_write(I2S_NUM_1, (void *)audio_data, SAMPLEBLOCK, &bytes_written, portMAX_DELAY);
@@ -185,6 +187,9 @@ void task_write(){
             end_buffer_read(&input_buffers);
 
         }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+
 
     }
 
