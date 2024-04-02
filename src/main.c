@@ -102,7 +102,7 @@ void timer_setup(){
 
     gptimer_alarm_config_t alarm_config = {
         .reload_count = 0, // counter will reload with 0 on alarm event
-        .alarm_count = 226,
+        .alarm_count = 225,
         .flags.auto_reload_on_alarm = true, // enable auto-reload
     };
 
