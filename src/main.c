@@ -6,6 +6,7 @@
 #include "driver/gptimer.h"
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 
 #include "mcp3202/mcp3202.h"
 
@@ -18,14 +19,13 @@
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
 
 
+QueueHandle_t queue;
 
 TaskHandle_t task_read_handle = NULL;
 TaskHandle_t task_write_handle = NULL;
 
+int16_t samples[SAMPLEBLOCK];
 
-int16_t samples_in[SAMPLEBLOCK];
-uint16_t current_sample = 0;
-int16_t samples_out[SAMPLEBLOCK];
 int pot1 =  0;
 int sw1 = 0;
 
@@ -52,7 +52,7 @@ void measure_important_function(void) {
     uint64_t end = esp_timer_get_time();
 
     for (int i = 0; i < SAMPLEBLOCK; i++){
-        printf("%i\n", samples_in[i]);
+        printf("%i\n", samples[i]);
     }
 
     printf("%u iterations took %llu milliseconds (%llu microseconds per invocation)\n",
@@ -87,10 +87,7 @@ static bool IRAM_ATTR acquire_sample(gptimer_handle_t timer, const gptimer_alarm
 
     mcp3202_read_diff(&value);
 
-    samples_in[current_sample] = (int16_t)value;
-
-    current_sample++;
-    if (current_sample > SAMPLEBLOCK) current_sample = 0;
+    xQueueSendToBackFromISR(queue, &value, high_task_awoken);
 
     return high_task_awoken == pdTRUE;
 }
@@ -169,7 +166,7 @@ void task_read(){
 
     while (1){
 
-
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -181,17 +178,23 @@ float decay = 0.5;
 
 void task_write(){
 
+
     dac_setup();
-
-
 
     while(1){
 
+        for (int i = 0; i < SAMPLEBLOCK; i++){
+            int16_t sample;
 
-        for (int i = 0; i < SAMPLEBLOCK; i+=1){
-            samples_out[i] = samples_in[i]*100;
-            //printf("%d\n", samples_out[i]);
+            xQueueReceive(queue, &sample, 1);
+            samples[i] = sample*100;
         }
+  
+
+        // for (int i = 0; i < SAMPLEBLOCK; i+=1){
+        //     samples_out[i] = samples_in[i]*100;
+        //     //printf("%d\n", samples_out[i]);
+        // }
 
         // for (int i = 0; i < SAMPLEBLOCK; i+=1){
         //     samples_out[i] = sine();
@@ -215,13 +218,15 @@ void task_write(){
         // }
 
         size_t bytes_written = 0;
-        i2s_write(I2S_NUM_1, (void *)samples_out, sizeof(samples_out), &bytes_written, portMAX_DELAY);
+        i2s_write(I2S_NUM_1, (void *)samples, sizeof(samples), &bytes_written, portMAX_DELAY);
     }
 }
 
 
 
 void app_main(){
+
+    queue = xQueueCreate(SAMPLEBLOCK*3, sizeof(int16_t));
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 1, task_read_handle, 1);
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 1, task_write_handle, 0);
