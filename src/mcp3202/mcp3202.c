@@ -85,7 +85,7 @@ mcp3202_err_t mcp3202_read_diff(uint16_t *value)
     //   * X: dummy bits, any value.
 
 
-    transaction.tx_data[0] = 0b00000100;
+    transaction.tx_data[0] = 0b00000010;
     transaction.tx_data[1] = 0;
     transaction.tx_data[2] = 0;
 
@@ -126,6 +126,7 @@ mcp3202_err_t mcp3202_read_diff(uint16_t *value)
     //    > result      = 0 0 0 0 0 1 0 0 1 1 1 1 0 1 1 0
 
     *value = ((transaction.rx_data[1] & 15) << 8) | transaction.rx_data[2];
+
 
     return MCP3202_OK;
 }

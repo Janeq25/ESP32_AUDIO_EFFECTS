@@ -15,3 +15,6 @@ extern TaskHandle_t task_read_handle;
 extern TaskHandle_t task_write_handle;
 
 extern int16_t samples[CHUNK_SIZE];
+
+extern float pot1;
+extern float pot2;
