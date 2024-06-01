@@ -93,7 +93,7 @@ void dac_setup(){
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
         .tx_desc_auto_clear = false,
-        .dma_buf_count = 8,
+        .dma_buf_count = 4,
         .dma_buf_len = CHUNK_SIZE,
         .use_apll = false,
         .fixed_mclk = 0

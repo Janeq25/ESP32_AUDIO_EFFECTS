@@ -3,8 +3,8 @@
 // ------------------------------ main defines -----------------------
 
 #define SAMPLERATE 44100    
-#define CHUNK_SIZE 512
-#define QUEUE_SIZE 3        //number of chunks in queue
+#define CHUNK_SIZE 128
+#define QUEUE_SIZE 8        //number of chunks in queue
 
 #define SWITCH_PIN GPIO_NUM_11
 
