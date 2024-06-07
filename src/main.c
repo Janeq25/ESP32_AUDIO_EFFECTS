@@ -61,8 +61,9 @@ void task_write(){                                  // task responsible for appl
 
             if(pot2 > 0.5){
                 //xQueueReceive(queue, &sample, 0);
-                 xQueueReceive(queue, &sample, pdMS_TO_TICKS(100));
+                xQueueReceive(queue, &sample, pdMS_TO_TICKS(100));
                 samples[i] = (sample-2048) << 4;
+                // samples[i] = sample;
             }
             else{
                 samples[i] = generate_sine(1000*pot1);
