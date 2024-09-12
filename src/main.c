@@ -59,21 +59,10 @@ void task_write(){                                  // task responsible for appl
         for (int i = 0; i < CHUNK_SIZE; i++){       // get chunk form queue and apply effect
             int16_t sample;
 
-            if(pot2 > 0.5){
-                //xQueueReceive(queue, &sample, 0);
-                xQueueReceive(queue, &sample, pdMS_TO_TICKS(100));
-                samples[i] = (sample-2048) << 4;
-                // samples[i] = sample;
-            }
-            else{
-                samples[i] = generate_sine(1000*pot1);
-            }
-            // printf(">sin:%i\n", samples[i]);
-            // printf("pot1:%f, pot2:%f\n", pot1, pot2);
+
+            xQueueReceive(queue, &sample, 1);
+            samples[i] = sample;
         }
-
-        
-
 
         size_t bytes_written = CHUNK_SIZE;
         i2s_write(I2S_NUM_1, (void *)samples, sizeof(samples), &bytes_written, portMAX_DELAY); //send prepared chunk to dac
