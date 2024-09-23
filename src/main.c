@@ -22,6 +22,8 @@ int16_t generate_sine(float frequency){
 
 
 void task_read(){                                   // task responsible for sample aquisition 
+
+    user_inputs_setup();
                 
     adc_setup();                                    // spi peripherial setup for communication with mcp3202 adc
                 
@@ -77,6 +79,8 @@ void task_write(){                                  // task responsible for appl
 void app_main(){
 
     queue = xQueueCreate(CHUNK_SIZE*QUEUE_SIZE, sizeof(int16_t));                               // rtos queue used for buffering acquired samples before applying effects
+
+
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 2, task_read_handle, 1);        //tasks are created pinned to cores
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 2, task_write_handle, 0);

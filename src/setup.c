@@ -9,8 +9,11 @@
 void user_inputs_setup(){
 
     // switch setup
-    gpio_set_pull_mode(SWITCH_PIN, GPIO_PULLUP_ENABLE);
-    gpio_set_direction(SWITCH_PIN, GPIO_MODE_INPUT);
+    // gpio_set_pull_mode(SWITCH_PIN, GPIO_PULLUP_ENABLE);
+    // gpio_set_direction(SWITCH_PIN, GPIO_MODE_INPUT);
+
+    //debug pin setup
+    gpio_set_direction(DEBUG_PIN, GPIO_MODE_OUTPUT);
 
 }
 
@@ -25,7 +28,7 @@ void adc_setup (){
         .miso_io = ADC_MISO_IO,
         .sclk_io = ADC_SCLK_IO,
         .host = SPI_HOST,
-        .clock_speed_hz = 2 * 5000 * 1000,                          // spi clock speed 2.5MHZ for acquisition time of about 11us
+        .clock_speed_hz = ADC_CLK,                          // spi clock speed 2.5MHZ for acquisition time of about 11us
         .reference_voltage = 5000,      
         .cs_io_num = ADC_CS_IO
         }; 
@@ -38,6 +41,8 @@ void adc_setup (){
 }
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
+    
+    gpio_set_level(DEBUG_PIN, 1);
 
     BaseType_t high_task_awoken = pdFALSE;
     uint16_t value;
@@ -45,6 +50,9 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
     mcp3202_read_diff(&value);                                      //differential read from adc
 
     xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
+
+    gpio_set_level(DEBUG_PIN, 0);
+
 
     return high_task_awoken == pdTRUE;  
 }   
@@ -56,7 +64,7 @@ void timer_setup(){
 
     gptimer_alarm_config_t alarm_config = {                         // alarm (interrupt) config
         .reload_count = 0,                                          // counter will reload with 0 on alarm event
-        .alarm_count = 225,                                         // value closest to sampling period of 1/44100 = 22,6757...us with maximal possible resolution of 0.1us
+        .alarm_count = ISR_CTR_VALUE,                                         // value closest to sampling period of 1/44100 = 22,6757...us with maximal possible resolution of 0.1us
         .flags.auto_reload_on_alarm = true,                         // enable auto-reload
     };
 
