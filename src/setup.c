@@ -4,7 +4,10 @@
 #include "globals.h"
 
 #include "esp_log.h"
+// #include "freertos/FreeRTOS.h"
 
+
+static portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 void user_inputs_setup(){
 
@@ -42,6 +45,8 @@ void adc_setup (){
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
     
+    taskENTER_CRITICAL_ISR(&my_spinlock);
+
     gpio_set_level(DEBUG_PIN, 1);
 
     BaseType_t high_task_awoken = pdFALSE;
@@ -52,6 +57,8 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
     xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
 
     gpio_set_level(DEBUG_PIN, 0);
+
+    taskEXIT_CRITICAL_ISR(&my_spinlock);
 
 
     return high_task_awoken == pdTRUE;  

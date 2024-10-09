@@ -5,9 +5,9 @@
 // #define SAMPLERATE 44100    
 // #define ISR_CTR_VALUE 225
 // #define ADC_CLK 10000000
-#define SAMPLERATE 22050    
-#define ISR_CTR_VALUE 453
-#define ADC_CLK 2500000
+#define SAMPLERATE 16000    
+#define ISR_CTR_VALUE 625
+#define ADC_CLK 10000000
 #define CHUNK_SIZE 128
 #define QUEUE_SIZE 3        //number of chunks in queue
 
