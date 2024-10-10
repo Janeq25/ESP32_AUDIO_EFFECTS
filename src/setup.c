@@ -6,8 +6,11 @@
 #include "esp_log.h"
 // #include "freertos/FreeRTOS.h"
 
-
-static portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
+// uint16_t data_in1[CHUNK_SIZE];
+// uint16_t data_in2[CHUNK_SIZE];
+// uint16_t data_in_sample_ptr;
+// uint8_t data_in_buffer_ptr;
+// uint8_t chunk_ready_flag;
 
 void user_inputs_setup(){
 
@@ -45,7 +48,6 @@ void adc_setup (){
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
     
-    taskENTER_CRITICAL_ISR(&my_spinlock);
 
     gpio_set_level(DEBUG_PIN, 1);
 
@@ -54,12 +56,22 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
 
     mcp3202_read_diff(&value);                                      //differential read from adc
 
-    xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
+    if (data_in_buffer_ptr == 0){
+        data_in1[data_in_sample_ptr] = value;
+        data_in_sample_ptr++;
+    }
+    else {
+        data_in2[data_in_sample_ptr] = value;
+        data_in_sample_ptr++;
+    }
+
+    if (data_in_sample_ptr >= CHUNK_SIZE) {
+        data_in_sample_ptr = 0;
+        data_in_buffer_ptr = (data_in_buffer_ptr + 1) % 2;
+        chunk_ready_flag = 1;
+    }
 
     gpio_set_level(DEBUG_PIN, 0);
-
-    taskEXIT_CRITICAL_ISR(&my_spinlock);
-
 
     return high_task_awoken == pdTRUE;  
 }   
