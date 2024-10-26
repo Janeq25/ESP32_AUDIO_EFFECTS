@@ -2,18 +2,20 @@
 
 // ------------------------------ main defines -----------------------
 
-// #define SAMPLERATE 44100    
-// #define ISR_CTR_VALUE 225
-// #define ADC_CLK 10000000
-#define SAMPLERATE 16000    
-#define ISR_CTR_VALUE 625
+#define SAMPLERATE 44100    
+#define ISR_CTR_VALUE 225
 #define ADC_CLK 10000000
-#define CHUNK_SIZE 128
+// #define SAMPLERATE 16000    
+// #define ISR_CTR_VALUE 625
+// #define ADC_CLK 10000000
+#define CHUNK_SIZE 256
 #define QUEUE_SIZE 3        //number of chunks in queue
 
 #define SWITCH_PIN GPIO_NUM_11
 
-#define DEBUG_PIN GPIO_NUM_22
+#define DEBUG_PIN0 GPIO_NUM_22
+#define DEBUG_PIN1 GPIO_NUM_23
+
 
 #define ADC_MOSI_IO GPIO_NUM_13
 #define ADC_MISO_IO GPIO_NUM_12

@@ -12,6 +12,33 @@
 // uint8_t data_in_buffer_ptr;
 // uint8_t chunk_ready_flag;
 
+
+// #include "math.h"
+// #define HALF 32768
+// #define M_TWOPI 6.283185307179586476925286766559
+
+
+// float cycles = 1.0f;
+
+
+// int16_t generate_sine(float frequency){
+//     if (frequency <= 0) return 0;
+
+//     float delta_time = 1.0f/SAMPLERATE;
+
+//     float angle = M_TWOPI * cycles;
+
+//     cycles += frequency * delta_time;
+
+//     if (cycles > 1.0f) cycles -= 1.0f;
+
+//     return HALF * 0.5 * sinf(angle);
+// }
+
+
+
+
+
 void user_inputs_setup(){
 
     // switch setup
@@ -19,7 +46,8 @@ void user_inputs_setup(){
     // gpio_set_direction(SWITCH_PIN, GPIO_MODE_INPUT);
 
     //debug pin setup
-    gpio_set_direction(DEBUG_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DEBUG_PIN0, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DEBUG_PIN1, GPIO_MODE_OUTPUT);
 
 }
 
@@ -49,12 +77,14 @@ void adc_setup (){
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
     
 
-    gpio_set_level(DEBUG_PIN, 1);
+    gpio_set_level(DEBUG_PIN0, 1);
 
     BaseType_t high_task_awoken = pdFALSE;
     uint16_t value;
 
     mcp3202_read_diff(&value);                                      //differential read from adc
+    // value = generate_sine(1000);
+
 
     if (data_in_buffer_ptr == 0){
         data_in1[data_in_sample_ptr] = value;
@@ -71,7 +101,7 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
         chunk_ready_flag = 1;
     }
 
-    gpio_set_level(DEBUG_PIN, 0);
+    gpio_set_level(DEBUG_PIN0, 0);
 
     return high_task_awoken == pdTRUE;  
 }   
@@ -115,7 +145,7 @@ void dac_setup(){
         i2s_config_t i2s_dac_config = {                             // i2s peripherial setup
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
         .sample_rate = SAMPLERATE,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
