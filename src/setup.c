@@ -16,7 +16,9 @@ void user_inputs_setup(){
     // gpio_set_direction(SWITCH_PIN, GPIO_MODE_INPUT);
 
     //debug pin setup
-    gpio_set_direction(DEBUG_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DEBUG_PIN1, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DEBUG_PIN2, GPIO_MODE_OUTPUT);
+
 
 }
 
@@ -47,7 +49,7 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
     
     taskENTER_CRITICAL_ISR(&my_spinlock);
 
-    gpio_set_level(DEBUG_PIN, 1);
+    gpio_set_level(DEBUG_PIN1, 1);
 
     BaseType_t high_task_awoken = pdFALSE;
     uint16_t value;
@@ -56,7 +58,7 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
 
     xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
 
-    gpio_set_level(DEBUG_PIN, 0);
+    gpio_set_level(DEBUG_PIN1, 0);
 
     taskEXIT_CRITICAL_ISR(&my_spinlock);
 
@@ -103,7 +105,7 @@ void dac_setup(){
         i2s_config_t i2s_dac_config = {                             // i2s peripherial setup
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,
         .sample_rate = SAMPLERATE,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
         .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
         .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,

@@ -15,6 +15,7 @@
 uint64_t ms_elapsed = 0;
 
 int16_t generate_sine(float frequency){
+    if (frequency == 0) return 0;
     int16_t out = (int16_t)(2048*sin(2*M_PI*frequency*((float)ms_elapsed/10000)));
     ms_elapsed += 1;
     return out;
@@ -57,19 +58,46 @@ void task_write(){                                  // task responsible for appl
     dac_setup();
 
     while(1){
+        size_t bytes_written = CHUNK_SIZE;
+        // int32_t samples2;
+
 
         for (int i = 0; i < CHUNK_SIZE; i++){       // get chunk form queue and apply effect
             int16_t sample;
 
 
             xQueueReceive(queue, &sample, 1);
-            samples[i] = sample;
+            samples[i] = (int32_t)(sample << 22);
+
+            // printf("%i\n", sample);
+            // samples[i] = generate_sine(2000);
         }
 
-        size_t bytes_written = CHUNK_SIZE;
+
+        // for (int i = 0; i < CHUNK_SIZE; i+=8){
+        //     samples[i] = 32768;
+        //     samples[i+1] = 55929;
+        //     samples[i+2] = 65535;
+        //     samples[i+3] = 55966;
+        //     samples[i+4] = 32820;
+        //     samples[i+5] = 9644;
+        //     samples[i+6] = 1;
+        //     samples[i+7] = 9534;
+            
+        // }
+
+
+
+
+        gpio_set_level(DEBUG_PIN2, 1);
+
         i2s_write(I2S_NUM_1, (void *)samples, sizeof(samples), &bytes_written, portMAX_DELAY); //send prepared chunk to dac
 
+        gpio_set_level(DEBUG_PIN2, 0);
+
         // printf(">sin:%f\n", sin((float)esp_timer_get_time()/1000000));
+
+        // vTaskDelay(pdMS_TO_TICKS(64));
 
     }
 }
