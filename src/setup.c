@@ -46,22 +46,26 @@ void adc_setup (){
 }
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
-    
-    taskENTER_CRITICAL_ISR(&my_spinlock);
 
     gpio_set_level(DEBUG_PIN1, 1);
+
+
+    // taskENTER_CRITICAL_ISR(&my_spinlock);
 
     BaseType_t high_task_awoken = pdFALSE;
     uint16_t value;
 
     mcp3202_read_diff(&value);                                      //differential read from adc
 
-    xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
+
+    xRingbufferSendFromISR(ringbuffer_handle, &value, sizeof(value), &high_task_awoken);
+
+    // xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
+
+
+    // taskEXIT_CRITICAL_ISR(&my_spinlock);
 
     gpio_set_level(DEBUG_PIN1, 0);
-
-    taskEXIT_CRITICAL_ISR(&my_spinlock);
-
 
     return high_task_awoken == pdTRUE;  
 }   
