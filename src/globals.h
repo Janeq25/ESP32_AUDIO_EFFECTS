@@ -17,7 +17,9 @@ extern RingbufHandle_t ringbuffer_handle;
 extern TaskHandle_t task_read_handle;
 extern TaskHandle_t task_write_handle;
 
-extern uint32_t samples[CHUNK_SIZE];
+extern int16_t samples[CHUNK_SIZE];
 
-extern float pot1;
+extern uint16_t pot1;
 extern float pot2;
+extern float pot3;
+

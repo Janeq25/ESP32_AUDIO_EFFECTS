@@ -3,24 +3,32 @@
 #include "defines.h"
 #include "globals.h"
 
-#include <inttypes.h>
 
-int16_t delay_buffer[MAXDELAYLENGTH];
-int32_t delay_index = 0;
-uint16_t delay_length = SAMPLERATE * 0.5;
-float decay = 0.5;
+int16_t delay_buf[MAXDELAYLENGTH];
+uint16_t input_ptr = 0;
+
+int16_t delay(int16_t sample_in){
+    uint16_t delay_ptr = (input_ptr + (uint16_t)(pot2 * (MAXDELAYLENGTH - 1))) % MAXDELAYLENGTH;
+
+    input_ptr = (input_ptr + 1) % MAXDELAYLENGTH;
+
+    delay_buf[input_ptr] = sample_in +  (uint16_t)(pot3 * delay_buf[delay_ptr]);
+    
+
+    // printf("%u, %u, %u\n", delay_ptr, input_ptr, delay_ptr-input_ptr);
+
+    return delay_buf[input_ptr];
+
+}
 
 
-void delay(int16_t* sample_in, int16_t* sample_out){
 
-    int32_t delayed_index = delay_index-delay_length;
-    if (delayed_index <= 0) delayed_index = delayed_index + MAXDELAYLENGTH;
+int16_t overdrive(int16_t sample){
+    int16_t out;
+    const int scale = POW11;
+    if (sample > (pot2 * scale) + 1) out = pot2 * scale;
+    else if (sample < (-1 * pot2 * scale) - 1)  out = -1 * pot2 * scale;
+    else out = sample;
 
-    //printf("delay_index: %li, delayed_index: %li\n", delay_index, delayed_index);
-
-    delay_buffer[delay_index] = *sample_in + (int16_t)(decay * delay_buffer[delay_index]);
-
-    *sample_out = delay_buffer[delayed_index];
-
-    delay_index++;
+    return out *  (1 + (1 - pot2) * 6);
 }

@@ -10,8 +10,9 @@ RingbufHandle_t ringbuffer_handle;
 TaskHandle_t task_read_handle = NULL;
 TaskHandle_t task_write_handle = NULL;
 
-uint32_t samples[CHUNK_SIZE];
+int16_t samples[CHUNK_SIZE];
 
 
-float pot1 = 0;
+uint16_t pot1 = 0;
 float pot2 = 0;
+float pot3 = 0;

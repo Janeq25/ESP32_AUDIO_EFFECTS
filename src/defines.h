@@ -28,6 +28,12 @@
 #define I2S_WS_IO   GPIO_NUM_5
 #define I2S_DATA_IO GPIO_NUM_18
 
+
+#define POW11 2048
+#define POW21 2097152
+
+
+#define EFFECT_NUM 2
 // ------------------------------ effect defines ---------------------
 
 #define MAXDELAYLENGTH (1 * SAMPLERATE)
