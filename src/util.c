@@ -11,6 +11,7 @@
 
 
 
+
 void measure_read_speed(void) {
     uint16_t voltage;
 
@@ -54,12 +55,44 @@ void output_chunk(int16_t* samples){
     for (int i = 0; i < CHUNK_SIZE; i++)
     {
         
-        output[i] = (uint32_t)(samples[i] << 12) + POW21;
-        // output[i] = (uint32_t)(samples[i] << 12) + POW21;
+        output[i] = (uint32_t)(samples[i] << 14) + POW21;
 
     }
     
 
     i2s_write(I2S_NUM_1, (void *)output, sizeof(output), &bytes_written, portMAX_DELAY); //send prepared chunk to dac
+
+}
+
+
+
+
+
+void init_buffer(buffer_s* buf_handle){
+    for (int i = 0; i < MAX_BUFFER_LEN; i++) {buf_handle->buffer_data[i] = 0;}
+    buf_handle->write_ptr = 0;
+    buf_handle->read_ptr = 0;
+    return;
+}
+
+void set_buffer_delay(uint16_t delay_frames, buffer_s* buf_handle){
+    buf_handle->write_ptr = buf_handle->read_ptr + delay_frames;
+    while (buf_handle->write_ptr >= MAX_BUFFER_LEN) { buf_handle->write_ptr -= MAX_BUFFER_LEN; }
+    return;
+}
+
+
+int16_t buffer_get(buffer_s* buf_handle){
+    int16_t out = buf_handle->buffer_data[buf_handle->read_ptr++];
+
+    if (buf_handle->read_ptr >= MAX_BUFFER_LEN) {buf_handle->read_ptr -= MAX_BUFFER_LEN; }
+
+    return out;
+}
+
+void buffer_set(int16_t in, buffer_s* buf_handle){
+    buf_handle->buffer_data[buf_handle->write_ptr++] = in;
+
+    if (buf_handle->write_ptr >= MAX_BUFFER_LEN) {buf_handle->write_ptr -= MAX_BUFFER_LEN; }
 
 }

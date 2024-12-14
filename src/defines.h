@@ -31,9 +31,10 @@
 
 #define POW11 2048
 #define POW21 2097152
+#define POW12 2048*2
 
 
-#define EFFECT_NUM 2
+#define EFFECT_NUM 7
 // ------------------------------ effect defines ---------------------
 
-#define MAXDELAYLENGTH (1 * SAMPLERATE)
+#define MAX_BUFFER_LEN (1 * SAMPLERATE)

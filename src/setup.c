@@ -47,7 +47,7 @@ void adc_setup (){
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
 
-    gpio_set_level(DEBUG_PIN1, 1);
+    // gpio_set_level(DEBUG_PIN1, 1);
 
 
     // taskENTER_CRITICAL_ISR(&my_spinlock);
@@ -65,7 +65,7 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
 
     // taskEXIT_CRITICAL_ISR(&my_spinlock);
 
-    gpio_set_level(DEBUG_PIN1, 0);
+    // gpio_set_level(DEBUG_PIN1, 0);
 
     return high_task_awoken == pdTRUE;  
 }   

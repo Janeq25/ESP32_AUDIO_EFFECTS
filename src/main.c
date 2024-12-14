@@ -12,6 +12,8 @@
 #include "util.h"                                   // utility functions
 #include "effects.h"
 
+// #include "esp_dsp.h"
+
 
 
 void task_read(){                                   // task responsible for sample aquisition 
@@ -38,6 +40,16 @@ void task_read(){                                   // task responsible for samp
 
         vTaskDelay(pdMS_TO_TICKS(100));
 
+        // printf("%f, %i\n", pot2, (uint16_t)(pot2 * MAX_BUFFER_LEN));
+
+        // printf("R=%u, W=%u, R-W=%u, W-R=%u\n, ", buffer1.read_ptr, buffer1.write_ptr, buffer1.read_ptr-buffer1.write_ptr, buffer1.write_ptr-buffer1.read_ptr);
+
+
+        if (buffer1.read_ptr > buffer1.write_ptr) printf("%i\n", buffer1.read_ptr - buffer1.write_ptr);
+        if (buffer1.read_ptr <= buffer1.write_ptr) printf("%i\n", buffer1.write_ptr - buffer1.read_ptr);
+
+
+
     }
 }
 
@@ -47,10 +59,20 @@ void task_write(){                                  // task responsible for appl
 
     dac_setup();
 
+    init_buffer(&buffer1);
+
+
     while(1){
+
+        // gpio_set_level(DEBUG_PIN1, 1);
 
         retrive_chunk(samples);
 
+        // gpio_set_level(DEBUG_PIN1, 0);
+
+
+        gpio_set_level(DEBUG_PIN2, 1);
+        
 
         for (int i = 0; i < CHUNK_SIZE; i++){
 
@@ -58,20 +80,49 @@ void task_write(){                                  // task responsible for appl
             switch (pot1/(128/EFFECT_NUM))
             {
             case 0:
-                samples[i] = overdrive(samples[i]);
+                samples[i] = samples[i];
                 break;
 
             case 1:
-                samples[i] = delay(samples[i]);
+                samples[i] = overdrive(samples[i], pot2, (int)(4*pot3));
                 break;
             
+            case 2:
+                // samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
+                samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
+
+                break;
+
+            case 3:
+                samples[i] = echo(samples[i], (uint16_t)(0.5f * MAX_BUFFER_LEN), pot3);
+                break;
+
+            case 4:
+                samples[i] = overdrive_echo(samples[i], (fmodf(pot2, 0.2f)*5.0f), (int)(pot2*4), (uint16_t)(pot3 * MAX_BUFFER_LEN), 0.5f);
+                break;
+
+            case 5:
+                samples[i] = tremolo(samples[i]);
+                break;
+
+            case 6:
+                samples[i] = flanger(samples[i]);
+                break;
+
+            case 7:
+                samples[i] = FIR_f(samples[i]);
+
             default:
                 break;
             }
 
         }
 
+
         output_chunk(samples);
+
+        gpio_set_level(DEBUG_PIN2, 0);
+        
 
         // for (int i = 0; i < CHUNK_SIZE; i++){
         //     samples[i] = overdrive(samples[i]);
@@ -103,7 +154,7 @@ void task_write(){                                  // task responsible for appl
 
 
 void app_main(){
-    ringbuffer_handle = xRingbufferCreate(CHUNK_SIZE, RINGBUF_TYPE_NOSPLIT);
+    ringbuffer_handle = xRingbufferCreate(CHUNK_SIZE*QUEUE_SIZE, RINGBUF_TYPE_NOSPLIT);
 
     xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 2, &task_read_handle, 1);        //tasks are created pinned to cores
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 2, &task_write_handle, 0);

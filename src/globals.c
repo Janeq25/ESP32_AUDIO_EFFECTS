@@ -16,3 +16,6 @@ int16_t samples[CHUNK_SIZE];
 uint16_t pot1 = 0;
 float pot2 = 0;
 float pot3 = 0;
+
+
+buffer_s buffer1;

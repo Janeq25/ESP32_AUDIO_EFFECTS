@@ -1,6 +1,8 @@
 #pragma once
 
 #include "defines.h"
+#include "util.h"
+
 
 #include "freertos/FreeRTOS.h"  
 // #include "freertos/queue.h"
@@ -22,4 +24,7 @@ extern int16_t samples[CHUNK_SIZE];
 extern uint16_t pot1;
 extern float pot2;
 extern float pot3;
+
+extern buffer_s buffer1;
+
 
