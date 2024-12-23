@@ -7,26 +7,20 @@
 
 
 
-#define MAXDELAYLENGTH SAMPLERATE
 
 
-int16_t delay_buf[MAXDELAYLENGTH];
-uint16_t input_ptr = 0;
+int16_t delay(int16_t in, uint16_t length){
+    int16_t out;
+    set_buffer_delay(length, &buffer1);
 
-// int16_t delay(int16_t sample_in){
-//     uint16_t delay_ptr = (input_ptr + (uint16_t)(pot2 * (MAXDELAYLENGTH - 1))) % MAXDELAYLENGTH;
+    buffer_set(in, &buffer1);
 
-//     input_ptr = (input_ptr + 1) % MAXDELAYLENGTH;
+    out = in + buffer_get(&buffer1);
 
-//     delay_buf[input_ptr] = sample_in +  (uint16_t)(pot3 * delay_buf[delay_ptr]);
-    
-//     return delay_buf[input_ptr];
+    return out;
+}
 
-// }
-
-
-
-int16_t delay(int16_t in, uint16_t length, float sustain){
+int16_t echo(int16_t in, uint16_t length, float sustain){
     int16_t out;
     set_buffer_delay(length, &buffer1);
 
@@ -39,6 +33,47 @@ int16_t delay(int16_t in, uint16_t length, float sustain){
 
 
 
+#define FIR_N 9
+
+float fir_f_coefs[] = {-0.008619748131390038,
+0.058451474662495818,
+0.137277859715206785,
+0.200538222317029891,
+0.224704382873315123,
+0.200538222317029891,
+0.137277859715206785,
+0.058451474662495818,
+-0.008619748131390038};
+
+float fir_buffer[FIR_N] = {0};
+int fir_buffer_ptr = 0;
+
+int16_t FIR_f(int16_t input){
+	float accumulator = 0;
+	int i;
+	fir_buffer[fir_buffer_ptr] = (float)input;
+
+	
+	for (i = 0; i < FIR_N; i++){
+		accumulator += fir_buffer[(fir_buffer_ptr+i+1)%FIR_N] * fir_f_coefs[i];
+	}
+	
+	fir_buffer_ptr++;
+	if (fir_buffer_ptr >= FIR_N) fir_buffer_ptr = 0;
+	
+	return accumulator;
+}
+
+int16_t echo_fir(int16_t in, uint16_t length, float sustain){
+    int16_t out;
+    set_buffer_delay(length, &buffer1);
+
+    out = in + FIR_f((int16_t)(buffer_get(&buffer1) * sustain));
+
+    buffer_set(out, &buffer1);
+
+    return out;
+}
 
 
 int16_t overdrive(int16_t sample, float gain, int type){
@@ -84,52 +119,6 @@ int16_t overdrive(int16_t sample, float gain, int type){
 }
 
 
-
-
-
-// float fir_f_coefs[] = {0.034, 0.074, 0.0188, 0.0395, 0.0677, 0.0984, 0.1248, 0.1400, 0.1400, 0.1248, 0.0984, 0.0677, 0.0395, 0.0188, 0.074, 0.034};
-#define FIR_N 9
-
-float fir_f_coefs[] = {-0.008619748131390038,
-0.058451474662495818,
-0.137277859715206785,
-0.200538222317029891,
-0.224704382873315123,
-0.200538222317029891,
-0.137277859715206785,
-0.058451474662495818,
--0.008619748131390038};
-
-float fir_buffer[FIR_N] = {0};
-int fir_buffer_ptr = 0;
-
-int16_t FIR_f(int16_t input){
-	float accumulator = 0;
-	int i;
-	fir_buffer[fir_buffer_ptr] = (float)input;
-
-	
-	for (i = 0; i < FIR_N; i++){
-		accumulator += fir_buffer[(fir_buffer_ptr+i+1)%FIR_N] * fir_f_coefs[i];
-	}
-	
-	fir_buffer_ptr++;
-	if (fir_buffer_ptr >= FIR_N) fir_buffer_ptr = 0;
-	
-	return accumulator;
-}
-
-
-int16_t echo(int16_t in, uint16_t length, float sustain){
-    int16_t out;
-    set_buffer_delay(length, &buffer1);
-
-    out = in + FIR_f((int16_t)(buffer_get(&buffer1) * sustain));
-
-    buffer_set(out, &buffer1);
-
-    return out;
-}
 
 
 int16_t overdrive_echo(int16_t in, float gain, int type, uint16_t length, float sustain){

@@ -88,29 +88,32 @@ void task_write(){                                  // task responsible for appl
                 break;
             
             case 2:
-                // samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
-                samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
-
+                samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN));
                 break;
 
             case 3:
-                samples[i] = echo(samples[i], (uint16_t)(0.5f * MAX_BUFFER_LEN), pot3);
+                samples[i] = echo(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
                 break;
 
             case 4:
-                samples[i] = overdrive_echo(samples[i], (fmodf(pot2, 0.2f)*5.0f), (int)(pot2*4), (uint16_t)(pot3 * MAX_BUFFER_LEN), 0.5f);
+                samples[i] = echo_fir(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN), pot3);
                 break;
 
             case 5:
-                samples[i] = tremolo(samples[i]);
+                samples[i] = overdrive_echo(samples[i], (fmodf(pot2, 0.2f)*5.0f), (int)(pot2*4), (uint16_t)(pot3 * MAX_BUFFER_LEN), 0.5f);
                 break;
 
             case 6:
-                samples[i] = flanger(samples[i]);
+                samples[i] = tremolo(samples[i]);
                 break;
 
             case 7:
+                samples[i] = flanger(samples[i]);
+                break;
+
+            case 8:
                 samples[i] = FIR_f(samples[i]);
+                break;
 
             default:
                 break;
