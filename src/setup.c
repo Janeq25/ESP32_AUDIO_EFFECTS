@@ -40,8 +40,6 @@ void adc_setup (){
 
     if (mcp3202_init(&mcp3202_cfg) != MCP3202_OK) ESP_LOGI("ADC_SETUP", "mcp init failed");
 
-    if (mcp3202_get_actual_freq(&freq) != MCP3202_OK) ESP_LOGI("ADC_SETUP", "get freq failed");
-    ESP_LOGI("ADC SETUP:", "freq = %li", freq);
 
 }
 

@@ -34,7 +34,7 @@
 #define POW12 2048*2
 
 
-#define EFFECT_NUM 9
+#define EFFECT_NUM 10
 // ------------------------------ effect defines ---------------------
 
 #define MAX_BUFFER_LEN (1 * SAMPLERATE)

@@ -30,3 +30,5 @@ void set_buffer_delay(uint16_t delay_frames, buffer_s* buf_handle);
 int16_t buffer_get(buffer_s* buf_handle);
 
 void buffer_set(int16_t in, buffer_s* buf_handle);
+
+int16_t buffer_get_interpolate(buffer_s* buf_handle);

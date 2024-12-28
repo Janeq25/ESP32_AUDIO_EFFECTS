@@ -149,9 +149,9 @@ float sine(float frequency){
 }
 
 
-int16_t tremolo(int16_t sample_in){
+int16_t tremolo(int16_t sample_in, float freq, float mod){
     
-    int16_t sample_out = sample_in * ( 1 + (sine(10 * pot2) * pot3));
+    int16_t sample_out = sample_in * ( 1 + (sine(10 * freq) * mod));
 
     // printf("%i\n", sample_out);
 
@@ -160,9 +160,21 @@ int16_t tremolo(int16_t sample_in){
 
 
 
+int16_t delay_interpolate(int16_t in, uint16_t length){
+    int16_t out;
+    set_buffer_delay(length, &buffer1);
+
+    buffer_set(in, &buffer1);
+
+    out = in + buffer_get_interpolate(&buffer1);
+
+    return out;
+}
+
+
 uint16_t delay_counter;
 uint16_t samples_counter;
-uint16_t min_delay = 100;
+uint16_t min_delay = 200;
 uint16_t max_delay = 500;
 uint16_t change_rate;
 uint16_t control;
@@ -171,11 +183,8 @@ uint16_t control;
 int16_t flanger(int16_t in){
     int16_t out;
     change_rate = 300 * pot2;
-    set_buffer_delay( delay_counter, &buffer1);
 
-    out = in + (int16_t)(buffer_get(&buffer1) * pot3);
-
-    buffer_set(out, &buffer1);
+    out = in + pot3 * delay_interpolate(in, delay_counter);
 
 
     if (samples_counter >= change_rate) {
@@ -194,7 +203,7 @@ int16_t flanger(int16_t in){
         control = -1;
     }
 
-    // printf("%i\n", delay_counter);
+    // printf("%i\n", delay_interpolate(in, delay_counter));
 
     return out;
 }

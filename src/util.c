@@ -76,14 +76,16 @@ void init_buffer(buffer_s* buf_handle){
 }
 
 void set_buffer_delay(uint16_t delay_frames, buffer_s* buf_handle){
-    buf_handle->write_ptr = buf_handle->read_ptr + delay_frames;
-    while (buf_handle->write_ptr >= MAX_BUFFER_LEN) { buf_handle->write_ptr -= MAX_BUFFER_LEN; }
+    buf_handle->read_ptr = buf_handle->write_ptr - delay_frames;
+    while (buf_handle->read_ptr > MAX_BUFFER_LEN) { buf_handle->read_ptr += MAX_BUFFER_LEN; }
     return;
 }
 
 
 int16_t buffer_get(buffer_s* buf_handle){
-    int16_t out = buf_handle->buffer_data[buf_handle->read_ptr++];
+    int16_t out = buf_handle->buffer_data[buf_handle->read_ptr];
+
+    buf_handle->read_ptr++;
 
     if (buf_handle->read_ptr >= MAX_BUFFER_LEN) {buf_handle->read_ptr -= MAX_BUFFER_LEN; }
 
@@ -91,8 +93,25 @@ int16_t buffer_get(buffer_s* buf_handle){
 }
 
 void buffer_set(int16_t in, buffer_s* buf_handle){
-    buf_handle->buffer_data[buf_handle->write_ptr++] = in;
+    buf_handle->buffer_data[buf_handle->write_ptr] = in;
+
+    buf_handle->write_ptr++;
 
     if (buf_handle->write_ptr >= MAX_BUFFER_LEN) {buf_handle->write_ptr -= MAX_BUFFER_LEN; }
 
+}
+
+int16_t buffer_get_interpolate(buffer_s* buf_handle){
+
+    float n = buf_handle->buffer_data[buf_handle->read_ptr];
+    float n_1 = buf_handle->buffer_data[buf_handle->read_ptr+1];
+
+    int16_t out = (int16_t)(0.5f * n + 0.5f * n_1);
+
+    buf_handle->read_ptr++;
+
+
+    if (buf_handle->read_ptr >= MAX_BUFFER_LEN-1) {buf_handle->read_ptr -= MAX_BUFFER_LEN-1; }
+
+    return out;
 }

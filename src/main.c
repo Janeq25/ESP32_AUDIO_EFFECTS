@@ -88,7 +88,7 @@ void task_write(){                                  // task responsible for appl
                 break;
             
             case 2:
-                samples[i] = delay(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN));
+                samples[i] = delay(samples[i], 1000);
                 break;
 
             case 3:
@@ -104,14 +104,18 @@ void task_write(){                                  // task responsible for appl
                 break;
 
             case 6:
-                samples[i] = tremolo(samples[i]);
+                samples[i] = tremolo(samples[i], pot2, pot3);
                 break;
 
             case 7:
-                samples[i] = flanger(samples[i]);
+                samples[i] = delay_interpolate(samples[i], (uint16_t)(pot2 * MAX_BUFFER_LEN));
                 break;
 
             case 8:
+                samples[i] = flanger(samples[i]);
+                break;
+
+            case 9:
                 samples[i] = FIR_f(samples[i]);
                 break;
 
@@ -127,30 +131,6 @@ void task_write(){                                  // task responsible for appl
         gpio_set_level(DEBUG_PIN2, 0);
         
 
-        // for (int i = 0; i < CHUNK_SIZE; i++){
-        //     samples[i] = overdrive(samples[i]);
-        // }
-
-        // printf("pot1: %i, pot2: %f, pot3: %f\n", pot1, pot2, pot3);
-
-
-        // for (int i = 0; i < CHUNK_SIZE; i+=8){ //24 bit sine wave
-        //     samples[i]   = 8388608;
-        //     samples[i+1] = 14317887;
-        //     samples[i+2] = 16777213;
-        //     samples[i+3] = 14327330;
-        //     samples[i+4] = 8401968;
-        //     samples[i+5] = 2468787;
-        //     samples[i+6] = 24;
-        //     samples[i+7] = 2440458;
-        // }
-
-
-        // gpio_set_level(DEBUG_PIN2, 1);
-        // output_chunk(samples);
-        // gpio_set_level(DEBUG_PIN2, 0);
-
-
     }
 }
 
@@ -159,7 +139,7 @@ void task_write(){                                  // task responsible for appl
 void app_main(){
     ringbuffer_handle = xRingbufferCreate(CHUNK_SIZE*QUEUE_SIZE, RINGBUF_TYPE_NOSPLIT);
 
-    xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 2, &task_read_handle, 1);        //tasks are created pinned to cores
+    xTaskCreatePinnedToCore(task_read, "task_read", 4096, NULL, 2, &task_read_handle, 1);  
     xTaskCreatePinnedToCore(task_write, "task_write", 4096, NULL, 2, &task_write_handle, 0);
 
 }
