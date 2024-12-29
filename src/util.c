@@ -106,7 +106,7 @@ int16_t buffer_get_interpolate(buffer_s* buf_handle){
     float n = buf_handle->buffer_data[buf_handle->read_ptr];
     float n_1 = buf_handle->buffer_data[buf_handle->read_ptr+1];
 
-    int16_t out = (int16_t)(0.5f * n + 0.5f * n_1);
+    int16_t out = (int16_t)(0.5f * (n + n_1));
 
     buf_handle->read_ptr++;
 
