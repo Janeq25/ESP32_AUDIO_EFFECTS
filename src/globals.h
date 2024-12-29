@@ -5,14 +5,11 @@
 
 
 #include "freertos/FreeRTOS.h"  
-// #include "freertos/queue.h"
 #include "freertos/ringbuf.h"
 
 #include <inttypes.h>
 
-// global structures like handles and memory allocations
 
-// extern QueueHandle_t queue;
 
 extern RingbufHandle_t ringbuffer_handle;
 

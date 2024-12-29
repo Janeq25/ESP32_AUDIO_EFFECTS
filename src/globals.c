@@ -2,7 +2,6 @@
 
 #include "defines.h"
 
-// QueueHandle_t queue = NULL;
 RingbufHandle_t ringbuffer_handle;
 
 

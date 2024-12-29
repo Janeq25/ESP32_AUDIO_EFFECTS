@@ -12,7 +12,6 @@
 #include "util.h"                                   // utility functions
 #include "effects.h"
 
-// #include "esp_dsp.h"
 
 
 
@@ -28,25 +27,15 @@ void task_read(){                                   // task responsible for samp
                 
     while (1){                                      // as the acquisition is being handled inside an interrupt, in time betwen samples user inputs (knobs position) can be acquired
 
-        // pot1 = roundf(adc1_get_raw(ADC1_CHANNEL_3)/40.95)/100;
         pot2 = (roundf(adc1_get_raw(ADC1_CHANNEL_6)/40.95)/100);
         pot3 = (roundf(adc1_get_raw(ADC1_CHANNEL_7)/40.95)/100);
 
 
         pot1 = adc1_get_raw(ADC1_CHANNEL_3) >> 5;
-        // pot2 = adc1_get_raw(ADC1_CHANNEL_6) >> 5;
-        // pot3 = adc1_get_raw(ADC1_CHANNEL_7) >> 5;
 
 
         vTaskDelay(pdMS_TO_TICKS(100));
 
-        // printf("%f, %i\n", pot2, (uint16_t)(pot2 * MAX_BUFFER_LEN));
-
-        // printf("R=%u, W=%u, R-W=%u, W-R=%u\n, ", buffer1.read_ptr, buffer1.write_ptr, buffer1.read_ptr-buffer1.write_ptr, buffer1.write_ptr-buffer1.read_ptr);
-
-
-        if (buffer1.read_ptr > buffer1.write_ptr) printf("%i\n", buffer1.read_ptr - buffer1.write_ptr);
-        if (buffer1.read_ptr <= buffer1.write_ptr) printf("%i\n", buffer1.write_ptr - buffer1.read_ptr);
 
 
 
@@ -64,12 +53,8 @@ void task_write(){                                  // task responsible for appl
 
     while(1){
 
-        // gpio_set_level(DEBUG_PIN1, 1);
 
         retrive_chunk(samples);
-
-        // gpio_set_level(DEBUG_PIN1, 0);
-
 
         gpio_set_level(DEBUG_PIN2, 1);
         
@@ -112,7 +97,7 @@ void task_write(){                                  // task responsible for appl
                 break;
 
             case 8:
-                samples[i] = flanger(samples[i]);
+                samples[i] = flanger(samples[i], 300 * pot2, pot3);
                 break;
 
             case 9:

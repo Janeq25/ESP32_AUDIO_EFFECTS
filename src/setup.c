@@ -11,10 +11,6 @@ static portMUX_TYPE my_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 void user_inputs_setup(){
 
-    // switch setup
-    // gpio_set_pull_mode(SWITCH_PIN, GPIO_PULLUP_ENABLE);
-    // gpio_set_direction(SWITCH_PIN, GPIO_MODE_INPUT);
-
     //debug pin setup
     gpio_set_direction(DEBUG_PIN1, GPIO_MODE_OUTPUT);
     gpio_set_direction(DEBUG_PIN2, GPIO_MODE_OUTPUT);
@@ -45,10 +41,8 @@ void adc_setup (){
 
 static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){ //timer interrupt responsible for sample acquisition with desired samplerate
 
-    // gpio_set_level(DEBUG_PIN1, 1);
+    gpio_set_level(DEBUG_PIN1, 1);
 
-
-    // taskENTER_CRITICAL_ISR(&my_spinlock);
 
     BaseType_t high_task_awoken = pdFALSE;
     uint16_t value;
@@ -58,12 +52,7 @@ static bool IRAM_ATTR acquire_sample_isr(gptimer_handle_t timer, const gptimer_a
 
     xRingbufferSendFromISR(ringbuffer_handle, &value, sizeof(value), &high_task_awoken);
 
-    // xQueueSendToBackFromISR(queue, &value, high_task_awoken);       //sample is placed on the back of the queue
-
-
-    // taskEXIT_CRITICAL_ISR(&my_spinlock);
-
-    // gpio_set_level(DEBUG_PIN1, 0);
+    gpio_set_level(DEBUG_PIN1, 0);
 
     return high_task_awoken == pdTRUE;  
 }   

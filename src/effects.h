@@ -21,4 +21,4 @@ int16_t tremolo(int16_t sample_in, float freq, float mod);
 
 int16_t delay_interpolate(int16_t in, uint16_t length);
 
-int16_t flanger(int16_t sample_in);
+int16_t flanger(int16_t in, int change_rate, float mix);
